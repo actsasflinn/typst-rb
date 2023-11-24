@@ -1,0 +1,37 @@
+[package]
+name = "typst"
+version = "0.0.1"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+chrono = { version = "0.4.24", default-features = false, features = [
+    "clock",
+    "std",
+] }
+codespan-reporting = "0.11"
+comemo = "0.3"
+dirs = "5"
+ecow = "0.2"
+env_proxy = "0.4"
+filetime = "0.2.22"
+flate2 = "1"
+fontdb = "0.15.0"
+pathdiff = "0.2"
+magnus = { version = "0.6" }
+same-file = "1"
+siphasher = "1.0"
+tar = "0.4"
+typst = { git = "https://github.com/typst/typst.git", tag = "v0.9.0" }
+typst-library = { git = "https://github.com/typst/typst.git", tag = "v0.9.0" }
+ureq = { version = "2", default-features = false, features = [
+    "gzip",
+    "socks-proxy",
+] }
+walkdir = "2.4.0"
+
+# enable rb-sys feature to test against Ruby head. This is only needed if you
+# want to work with the unreleased, in-development, next version of Ruby
+rb-sys = { version = "*", default-features = false, features = ["stable-api-compiled-fallback"] }
