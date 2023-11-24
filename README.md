@@ -21,6 +21,9 @@ Typst::compile("hello.typ", "hello.pdf", ".", [])
 pdf_bytes = Typst.compile("hello.typ", nil, ".", [])
 ```
 
+## Contributors & Acknowledgements
+This is mostly a port of [typst-py](https://github.com/messense/typst-py) by messense
+
 ## License
 
 This work is released under the Apache-2.0 license. A copy of the license is provided in the [LICENSE](./LICENSE) file.
