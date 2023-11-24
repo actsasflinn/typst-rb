@@ -14,15 +14,21 @@ gem install typst
 ```ruby
 require "typst"
 
-# Compile `hello.typ` to PDF and save as `hello.pdf`
-Typst::compile("hello.typ", "hello.pdf", ".", [])
+# Compile `readme.typ` to PDF and save as `readme.pdf`
+Typst.new("readme.typ").write("readme.pdf")
+# => #<Typst:0x0000000104bbe5e0 @font_paths=[], @input="hello.typ", @root="."> 
 
-# Or return PDF content as bytes
-pdf_bytes = Typst.compile("hello.typ", nil, ".", [])
+# Or return PDF content as an array of bytes
+pdf_bytes = Typst.new("readme.typ").bytes
+# => [37, 80, 68, 70, 45, 49, 46, 55, 10, 37, 128 ...] 
+
+# Or return PDF content as a string of bytes
+document = Typst.new("readme.typ").document
+# => "%PDF-1.7\n%\x80\x80\x80\x80\n\n4 0 obj\n<<\n  /Type /Font\n  /Subtype ..." 
 ```
 
 ## Contributors & Acknowledgements
-This is mostly a port of [typst-py](https://github.com/messense/typst-py) by messense
+This is mostly a port of [typst-py](https://github.com/messense/typst-py) by [messense](https://github.com/messense)
 
 ## License
 

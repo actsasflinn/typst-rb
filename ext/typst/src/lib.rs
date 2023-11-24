@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 use std::env;
 
-use magnus::{function, exception, Error, IntoValue};
+use magnus::{define_class, class, function, exception, Error, IntoValue};
+use magnus::{prelude::*};
 
 use world::SystemWorld;
 
@@ -13,10 +14,9 @@ mod world;
 
 fn compile(
     input: PathBuf,
-    output: Option<PathBuf>,
     root: Option<PathBuf>,
     font_paths: Vec<PathBuf>,
-) -> Result<magnus::Value, Error> {
+) -> Result<Vec<u8>, Error> {
     let input = input.canonicalize()
         .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?;
 
@@ -55,20 +55,28 @@ fn compile(
         .compile()
         .map_err(|msg| magnus::Error::new(exception::arg_error(), msg.to_string()))?;
 
-    if let Some(output) = output {
-        std::fs::write(output, pdf_bytes)
-            .map_err(|_| magnus::Error::new(exception::arg_error(), "error"))?;
-
-        let value = true.into_value();
-        Ok(value)
-    } else {
-        let value = pdf_bytes.into_value(); 
-        Ok(value)
-    }
+    //let value = pdf_bytes.into_value(); 
+    Ok(pdf_bytes)
 }
+
+fn write(
+    input: PathBuf,
+    output: PathBuf,
+    root: Option<PathBuf>,
+    font_paths: Vec<PathBuf>,
+) -> Result<magnus::Value, Error> {
+    let pdf_bytes = compile(input, root, font_paths)?;
+
+    std::fs::write(output, pdf_bytes)
+        .map_err(|_| magnus::Error::new(exception::arg_error(), "error"))?;
+
+    let value = true.into_value();
+    Ok(value)
+}    
 
 #[magnus::init]
 fn init() {
-    let module = magnus::define_module("Typst").unwrap();
-    module.define_module_function("compile", function!(compile, 4)).unwrap();
+    let class = define_class("Typst", class::object()).unwrap();
+    class.define_singleton_method("_compile", function!(compile, 3)).unwrap();
+    class.define_singleton_method("_write", function!(write, 4)).unwrap();
 }
