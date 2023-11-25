@@ -15,7 +15,7 @@ class Typst
   end
 
   def compile
-    Typst::_compile(input, root, font_paths)
+    Typst::_compile(input, root, font_paths, File.dirname(__FILE__))
   end
 
   def update

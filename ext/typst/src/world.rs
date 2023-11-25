@@ -4,6 +4,8 @@ use std::fs;
 use std::hash::Hash;
 use std::path::{Path, PathBuf};
 
+use log::{debug};
+
 use chrono::{DateTime, Datelike, Local};
 use comemo::Prehashed;
 use filetime::FileTime;
@@ -11,7 +13,7 @@ use same_file::Handle;
 use siphasher::sip128::{Hasher128, SipHasher13};
 use typst::diag::{FileError, FileResult, StrResult};
 use typst::eval::{eco_format, Bytes, Datetime, Library};
-use typst::font::{Font, FontBook};
+use typst::font::{Font, FontBook, FontVariant};
 use typst::syntax::{FileId, Source, VirtualPath};
 use typst::World;
 
@@ -189,6 +191,13 @@ impl SystemWorldBuilder {
     pub fn build(self) -> StrResult<SystemWorld> {
         let mut searcher = FontSearcher::new();
         searcher.search(&self.font_paths, &self.font_files);
+
+        for (name, infos) in searcher.book.families() {
+            for info in infos {
+                let FontVariant { style, weight, stretch } = info.variant;
+                debug!(target: "typst-rb", "font {name:?} variants - Style: {style:?}, Weight: {weight:?}, Stretch: {stretch:?}");
+            }
+        }    
 
         let input = self.main.canonicalize().map_err(|_| {
             eco_format!("input file not found (searched at {})", self.main.display())

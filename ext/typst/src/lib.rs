@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::env;
 
 use magnus::{define_class, class, function, exception, Error, IntoValue};
 use magnus::{prelude::*};
@@ -16,6 +15,7 @@ fn compile(
     input: PathBuf,
     root: Option<PathBuf>,
     font_paths: Vec<PathBuf>,
+    resource_path: PathBuf,
 ) -> Result<Vec<u8>, Error> {
     let input = input.canonicalize()
         .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?;
@@ -29,7 +29,7 @@ fn compile(
         PathBuf::new()
     };
 
-    let resource_path = env::current_dir()
+    let resource_path = resource_path.canonicalize()
         .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?;
 
     let mut default_fonts = Vec::new();
@@ -55,7 +55,6 @@ fn compile(
         .compile()
         .map_err(|msg| magnus::Error::new(exception::arg_error(), msg.to_string()))?;
 
-    //let value = pdf_bytes.into_value(); 
     Ok(pdf_bytes)
 }
 
@@ -64,8 +63,9 @@ fn write(
     output: PathBuf,
     root: Option<PathBuf>,
     font_paths: Vec<PathBuf>,
+    resource_path: PathBuf,
 ) -> Result<magnus::Value, Error> {
-    let pdf_bytes = compile(input, root, font_paths)?;
+    let pdf_bytes = compile(input, root, font_paths, resource_path)?;
 
     std::fs::write(output, pdf_bytes)
         .map_err(|_| magnus::Error::new(exception::arg_error(), "error"))?;
@@ -76,7 +76,9 @@ fn write(
 
 #[magnus::init]
 fn init() {
+    env_logger::init();
+
     let class = define_class("Typst", class::object()).unwrap();
-    class.define_singleton_method("_compile", function!(compile, 3)).unwrap();
-    class.define_singleton_method("_write", function!(write, 4)).unwrap();
+    class.define_singleton_method("_compile", function!(compile, 4)).unwrap();
+    class.define_singleton_method("_write", function!(write, 5)).unwrap();
 }
