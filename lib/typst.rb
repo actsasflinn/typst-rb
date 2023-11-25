@@ -14,8 +14,16 @@ class Typst
     bytes()
   end
 
-  def bytes()
-    bytes = Typst::_compile(input, root, font_paths)
+  def compile
+    Typst::_compile(input, root, font_paths)
+  end
+
+  def update
+    @bytes = compile
+  end
+
+  def bytes
+    @bytes ||= compile
   end
 
   def document
@@ -24,6 +32,5 @@ class Typst
 
   def write(output)
     File.open(output, "w"){ |f| f.write(document) }
-    #Typst::_write(input, output, root, font_paths)
   end
 end
