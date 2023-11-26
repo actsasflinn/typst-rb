@@ -1,21 +1,24 @@
-# frozen_string_literal: true
-
-require "rake"
-require "rake/testtask"
+require "bundler/gem_tasks"
 require "rake/extensiontask"
+require "rubygems/package_task"
+require "bundler"
 
-task default: :test
+CROSS_PLATFORMS = %w[
+  aarch64-linux
+  arm64-darwin
+  x64-mingw32
+  x86_64-darwin
+  x86_64-linux
+  x86_64-linux-musl
+]
 
-Rake::ExtensionTask.new("typst") do |c|
-  c.lib_dir = "lib/typst"
+spec = Bundler.load_gemspec("typst.gemspec")
+
+Gem::PackageTask.new(spec).define
+
+Rake::ExtensionTask.new("typst", spec) do |ext|
+  ext.lib_dir = "lib/typst"
+  ext.source_pattern = "*.{rs,toml}"
+  ext.cross_compile = true
+  ext.cross_platform = CROSS_PLATFORMS
 end
-
-task :dev do
-  ENV['RB_SYS_CARGO_PROFILE'] = 'dev'
-end
-
-Rake::TestTask.new do |t|
-  t.deps << :dev << :compile
-  t.test_files = FileList[File.expand_path("test/*_test.rb", __dir__)]
-end
-

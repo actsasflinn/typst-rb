@@ -1,0 +1,3 @@
+[workspace]
+members = ["ext/typst"]
+resolver = "2"
