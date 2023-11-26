@@ -1,5 +1,5 @@
 require_relative "typst/typst"
-
+require "cgi"
 module Typst
   class Pdf
     attr_accessor :input
@@ -77,6 +77,36 @@ module Typst
         File.open(output, "w"){ |f| f.write(pages[0]) }
       else
       end
+    end
+  end
+
+  class Html
+    attr_accessor :title
+    attr_accessor :svg
+    attr_accessor :html
+
+    def initialize(input, title = nil, root: ".", font_paths: [])
+      title = title || File.basename(input, File.extname(input))
+      @title = CGI::escapeHTML(title)
+      @svg = Svg.new(input, root: root, font_paths: font_paths)
+    end
+
+    def markup
+      %{
+<!DOCTYPE html>
+<html>
+<head>
+<title>#{title}</title>
+</head>
+<body>
+#{svg.pages.join("<br />")}
+</body>
+</html>
+      }
+    end
+
+    def write(output)
+      File.open(output, "w"){ |f| f.write(markup) }
     end
   end
 end
