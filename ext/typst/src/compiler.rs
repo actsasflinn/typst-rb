@@ -13,7 +13,7 @@ type CodespanResult<T> = Result<T, CodespanError>;
 type CodespanError = codespan_reporting::files::Error;
 
 impl SystemWorld {
-    pub fn compile(&mut self) -> StrResult<Vec<u8>> {
+    pub fn compile_pdf(&mut self) -> StrResult<Vec<u8>> {
         // Reset everything and ensure that the main file is present.
         self.reset();
         self.source(self.main()).map_err(|err| err.to_string())?;
@@ -28,6 +28,22 @@ impl SystemWorld {
             Err(errors) => Err(format_diagnostics(self, &errors, &warnings).unwrap().into()),
         }
     }
+
+    pub fn compile_svg(&mut self) -> StrResult<Vec<String>> {
+        // Reset everything and ensure that the main file is present.
+        self.reset();
+        self.source(self.main()).map_err(|err| err.to_string())?;
+
+        let mut tracer = Tracer::default();
+        let result = typst::compile(self, &mut tracer);
+        let warnings = tracer.warnings();
+
+        match result {
+            // Export the PDF / PNG.
+            Ok(document) => Ok(export_svg(&document)?),
+            Err(errors) => Err(format_diagnostics(self, &errors, &warnings).unwrap().into()),
+        }
+    }
 }
 
 /// Export to a PDF.
@@ -35,6 +51,17 @@ impl SystemWorld {
 fn export_pdf(document: &Document, world: &SystemWorld) -> StrResult<Vec<u8>> {
     let ident = world.input().to_string_lossy();
     let buffer = typst::export::pdf(document, Some(&ident), now());
+    Ok(buffer)
+}
+
+/// Export to one or multiple SVGs.
+#[inline]
+fn export_svg(document: &Document) -> StrResult<Vec<String>> {
+    let mut buffer: Vec<String> = Vec::new();
+    for (_i, frame) in document.pages.iter().enumerate() {
+        let svg = typst::export::svg(frame);
+        buffer.push(svg.to_string())
+    }
     Ok(buffer)
 }
 
