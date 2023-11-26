@@ -41,6 +41,38 @@ Typst::Html.new("readme.typ", "README").write("readme.html")
 # Or return HTML content
 markup = Typst::Html.new("readme.typ", "README").markup
 # => "\n<!DOCTYPE html>\n<html>\n<head>\n<title>README</title>\n</head>\n<bo..."
+
+# Compile from a string to PDF
+t = Typst::Pdf.from_s(%{hello world})
+
+# Compile from a string to SVG
+t = Typst::Svg.from_s(%{hello world})
+
+# Compile from a string to PDF
+t = Typst::Html.from_s(%{hello world})
+
+# A more complex example of compiling from string
+main = %{
+#import "template.typ": *
+
+#show: template.with()
+
+#lorem(50)
+
+#image("icon.svg")
+}
+
+template = %{
+#let template(body) = {
+  set text(12pt, font: "Example")
+  body
+}
+}
+
+icon = File.read("icon.svg")
+font_bytes = File.read("Example.ttf")
+
+t = Typst::Pdf.from_s(main, dependencies: { "template.typ" => template, "icon.svg" => icon }, fonts: { "Example.ttf" => font_bytes })
 ```
 
 == Contributors & Acknowledgements

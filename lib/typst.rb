@@ -1,30 +1,45 @@
 require_relative "typst/typst"
 require "cgi"
+require "pathname"
+require "tmpdir"
+
 module Typst
-  class Pdf
+  class Base
+    def self.from_s(main_source, dependencies: {}, fonts: {})
+      Dir.mktmpdir do |tmp_dir|
+        tmp_main_file = Pathname.new(tmp_dir).join("main.typ")
+        File.write(tmp_main_file, main_source)
+
+        dependencies.each do |dep_name, dep_source|
+          tmp_dep_file = Pathname.new(tmp_dir).join(dep_name)
+          File.write(tmp_dep_file, dep_source)
+        end
+
+        relative_font_path = Pathname.new(tmp_dir).join("fonts")
+        puts fonts
+        fonts.each do |font_name, font_bytes|
+          Pathname.new(relative_font_path).mkpath
+          tmp_font_file = relative_font_path.join(font_name)
+          File.write(tmp_font_file, font_bytes)
+        end
+
+        new(tmp_main_file, root: tmp_dir, font_paths: [relative_font_path])
+      end
+    end
+  end
+
+  class Pdf < Base
     attr_accessor :input
     attr_accessor :root
     attr_accessor :font_paths
     attr_accessor :bytes
     
-    def initialize(input, root: ".", font_paths: [])
+    def initialize(input, root: ".", font_paths: ["fonts"])
       self.input = input
       self.root = root
       self.font_paths = font_paths
 
-      document
-    end
-
-    def to_pdf
-      Typst::_to_pdf(input, root, font_paths, File.dirname(__FILE__))
-    end
-
-    def update
-      @bytes = to_pdf
-    end
-
-    def bytes
-      @bytes ||= to_pdf
+      @bytes = Typst::_to_pdf(input, root, font_paths, File.dirname(__FILE__))
     end
 
     def document
@@ -36,30 +51,18 @@ module Typst
     end
   end
 
-  class Svg
+  class Svg < Base
     attr_accessor :input
     attr_accessor :root
     attr_accessor :font_paths
     attr_accessor :pages
     
-    def initialize(input, root: ".", font_paths: [])
+    def initialize(input, root: ".", font_paths: ["fonts"])
       self.input = input
       self.root = root
       self.font_paths = font_paths
     
-      pages
-    end
-
-    def to_svg
-      Typst::_to_svg(input, root, font_paths, File.dirname(__FILE__))
-    end
-
-    def update
-      @pages = to_svg
-    end
-
-    def pages
-      @pages ||= to_svg
+      @pages = Typst::_to_svg(input, root, font_paths, File.dirname(__FILE__))
     end
 
     def write(output)
@@ -80,12 +83,12 @@ module Typst
     end
   end
 
-  class Html
+  class Html < Base
     attr_accessor :title
     attr_accessor :svg
     attr_accessor :html
 
-    def initialize(input, title = nil, root: ".", font_paths: [])
+    def initialize(input, title = nil, root: ".", font_paths: ["fonts"])
       title = title || File.basename(input, File.extname(input))
       @title = CGI::escapeHTML(title)
       @svg = Svg.new(input, root: root, font_paths: font_paths)
