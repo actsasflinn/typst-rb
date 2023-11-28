@@ -36,7 +36,7 @@ pages = Typst::Svg.new("readme.typ").pages
 Typst::Html.new("readme.typ", "README").write("readme.html")
 
 # Or return HTML content
-markup = Typst::Html.new("readme.typ", "README").markup
+markup = Typst::Html.new("readme.typ", title: "README").markup
 # => "\n<!DOCTYPE html>\n<html>\n<head>\n<title>README</title>\n</head>\n<bo..."
 
 # Compile from a string to PDF

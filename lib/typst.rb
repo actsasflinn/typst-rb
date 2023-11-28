@@ -5,6 +5,20 @@ require "tmpdir"
 
 module Typst
   class Base
+    attr_accessor :input
+    attr_accessor :root
+    attr_accessor :font_paths
+
+    def initialize(input, root: ".", font_paths: [])
+      self.input = input
+      self.root = Pathname.new(root).expand_path.to_s
+      self.font_paths = font_paths.collect{ |fp| Pathname.new(fp).expand_path.to_s }
+    end
+
+    def write(output)
+      File.open(output, "w"){ |f| f.write(document) }
+    end
+
     def self.from_s(main_source, dependencies: {}, fonts: {})
       Dir.mktmpdir do |tmp_dir|
         tmp_main_file = Pathname.new(tmp_dir).join("main.typ")
@@ -29,40 +43,24 @@ module Typst
   end
 
   class Pdf < Base
-    attr_accessor :input
-    attr_accessor :root
-    attr_accessor :font_paths
     attr_accessor :bytes
     
-    def initialize(input, root: ".", font_paths: ["fonts"])
-      self.input = input
-      self.root = root
-      self.font_paths = font_paths
-
-      @bytes = Typst::_to_pdf(input, root, font_paths, File.dirname(__FILE__))
+    def initialize(input, root: ".", font_paths: [])
+      super(input, root: root, font_paths: font_paths)
+      @bytes = Typst::_to_pdf(self.input, self.root, self.font_paths, File.dirname(__FILE__))
     end
 
     def document
       bytes.pack("C*").to_s
     end
-
-    def write(output)
-      File.open(output, "w"){ |f| f.write(document) }
-    end
   end
 
   class Svg < Base
-    attr_accessor :input
-    attr_accessor :root
-    attr_accessor :font_paths
     attr_accessor :pages
     
-    def initialize(input, root: ".", font_paths: ["fonts"])
-      self.input = input
-      self.root = root
-      self.font_paths = font_paths
-    
-      @pages = Typst::_to_svg(input, root, font_paths, File.dirname(__FILE__))
+    def initialize(input, root: ".", font_paths: [])
+      super(input, root: root, font_paths: font_paths)
+      @pages = Typst::_to_svg(self.input, self.root, self.font_paths, File.dirname(__FILE__))
     end
 
     def write(output)
@@ -88,12 +86,13 @@ module Typst
     attr_accessor :svg
     attr_accessor :html
 
-    def initialize(input, title = nil, root: ".", font_paths: ["fonts"])
+    def initialize(input, title: nil, root: ".", font_paths: [])
+      super(input, root: root, font_paths: font_paths)
       title = title || File.basename(input, File.extname(input))
-      @title = CGI::escapeHTML(title)
-      @svg = Svg.new(input, root: root, font_paths: font_paths)
+      self.title = CGI::escapeHTML(title)
+      self.svg = Svg.new(self.input, root: self.root, font_paths: self.font_paths)
     end
-
+  
     def markup
       %{
 <!DOCTYPE html>
@@ -107,9 +106,6 @@ module Typst
 </html>
       }
     end
-
-    def write(output)
-      File.open(output, "w"){ |f| f.write(markup) }
-    end
+    alias_method :document, :markup
   end
 end

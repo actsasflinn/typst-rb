@@ -1,0 +1,3 @@
+[submodule "test/fonts/Fasthand"]
+	path = test/fonts/Fasthand
+	url = https://github.com/danhhong/Fasthand
