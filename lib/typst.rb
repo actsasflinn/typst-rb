@@ -2,6 +2,7 @@ require_relative "typst/typst"
 require "cgi"
 require "pathname"
 require "tmpdir"
+require "zip/filesystem"
 
 module Typst
   class Base
@@ -20,9 +21,9 @@ module Typst
     end
 
     def self.from_s(main_source, dependencies: {}, fonts: {})
-    dependencies = {} if dependencies.nil?
-    fonts = {} if fonts.nil?
-    Dir.mktmpdir do |tmp_dir|
+      dependencies = {} if dependencies.nil?
+      fonts = {} if fonts.nil?
+      Dir.mktmpdir do |tmp_dir|
         tmp_main_file = Pathname.new(tmp_dir).join("main.typ")
         File.write(tmp_main_file, main_source)
 
@@ -32,7 +33,6 @@ module Typst
         end
 
         relative_font_path = Pathname.new(tmp_dir).join("fonts")
-        puts fonts
         fonts.each do |font_name, font_bytes|
           Pathname.new(relative_font_path).mkpath
           tmp_font_file = relative_font_path.join(font_name)
@@ -40,6 +40,35 @@ module Typst
         end
 
         new(tmp_main_file, root: tmp_dir, font_paths: [relative_font_path])
+      end
+    end
+
+    def self.from_zip(zip_file_path, main_file = nil)
+      dependencies = {}
+      fonts = {}
+
+      Zip::File.open(zip_file_path) do |zipfile|
+        file_names = zipfile.dir.glob("*").collect{ |f| f.name }
+        case
+          when file_names.include?(main_file) then tmp_main_file = main_file
+          when file_names.include?("main.typ") then tmp_main_file = "main.typ"
+          when file_names.size == 1 then tmp_main_file = file_names.first
+          else raise "no main file found"
+        end
+        main_source = zipfile.file.read(tmp_main_file)
+        file_names.delete(tmp_main_file)
+        file_names.delete("fonts/")
+
+        file_names.each do |dep_name|
+          dependencies[dep_name] = zipfile.file.read(dep_name)
+        end
+
+        font_file_names = zipfile.dir.glob("fonts/*").collect{ |f| f.name }
+        font_file_names.each do |font_name|
+          fonts[Pathname.new(font_name).basename.to_s] = zipfile.file.read(font_name)
+        end
+
+        from_s(tmp_main_file, dependencies: dependencies, fonts: fonts)
       end
     end
   end

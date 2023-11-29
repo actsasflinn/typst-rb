@@ -73,6 +73,13 @@ icon = File.read("icon.svg")
 font_bytes = File.read("Example.ttf")
 
 t = Typst::Pdf.from_s(main, dependencies: { "template.typ" => template, "icon.svg" => icon }, fonts: { "Example.ttf" => font_bytes })
+
+# From a zip file that includes a main.typ
+# zip file include flat dependencies included and a fonts directory
+Typst::Pdf::from_zip("working_directory.zip")
+
+# From a zip with a named main typst file
+Typst::Pdf::from_zip("working_directory.zip", "hello.typ")
 ```
 
 == Contributors & Acknowledgements
