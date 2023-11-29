@@ -1,5 +1,6 @@
 require "bundler/gem_tasks"
 require "rake/extensiontask"
+require "rake/testtask"
 require "rubygems/package_task"
 require "bundler"
 
@@ -21,4 +22,10 @@ Rake::ExtensionTask.new("typst", spec) do |ext|
   ext.source_pattern = "*.{rs,toml}"
   ext.cross_compile = true
   ext.cross_platform = CROSS_PLATFORMS
+end
+
+Rake::TestTask.new do |t|
+  t.libs << "test"
+  t.test_files = FileList['test/*_test.rb']
+  t.verbose = true
 end

@@ -1,6 +1,7 @@
 require "test/unit"
-require "base64"
 require_relative "../lib/typst"
+
+Dir.chdir(Pathname.new(__FILE__).dirname.to_s)
 
 class TypstTest < Test::Unit::TestCase
 
@@ -12,7 +13,7 @@ class TypstTest < Test::Unit::TestCase
 
   def test_pdf_assets
     assert {
-      t = Typst::Pdf.new("template_with_font_and_icon/main.typ", root: "template_with_font_and_icon")
+      Typst::Pdf.new("template_with_font_and_icon/main.typ", root: "template_with_font_and_icon")
     }
   end
 
@@ -30,13 +31,13 @@ class TypstTest < Test::Unit::TestCase
 
   def test_svg
     assert {
-      t = Typst::Svg.new("test.typ")
+      Typst::Svg.new("test.typ")
     }
   end
 
   def test_html
     assert {
-      t = Typst::Html.new("test.typ")
+      Typst::Html.new("test.typ")
     }
   end
 
@@ -61,6 +62,6 @@ class TypstTest < Test::Unit::TestCase
     icon = File.read("template_with_font_and_icon/monkey.svg")
     font_bytes = File.read("./fonts/Fasthand/Release/ttf/Fasthand-Regular.ttf")
 
-    t = Typst::Pdf.from_s(main, dependencies: { "template.typ" => template, "icon.svg" => icon }, fonts: { "Fasthand-Regular.ttf" => font_bytes })
+    Typst::Pdf.from_s(main, dependencies: { "template.typ" => template, "icon.svg" => icon }, fonts: { "Fasthand-Regular.ttf" => font_bytes })
   end
 end
