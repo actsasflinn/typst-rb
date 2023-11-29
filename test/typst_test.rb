@@ -42,6 +42,10 @@ class TypstTest < Test::Unit::TestCase
   end
 
   def test_from_s
+    Typst::Pdf.from_s(%{hello world}, dependencies: nil, fonts: nil)
+  end
+
+  def test_from_s_complex
     main = %{
 #import "template.typ": *
 

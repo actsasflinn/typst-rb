@@ -20,7 +20,9 @@ module Typst
     end
 
     def self.from_s(main_source, dependencies: {}, fonts: {})
-      Dir.mktmpdir do |tmp_dir|
+    dependencies = {} if dependencies.nil?
+    fonts = {} if fonts.nil?
+    Dir.mktmpdir do |tmp_dir|
         tmp_main_file = Pathname.new(tmp_dir).join("main.typ")
         File.write(tmp_main_file, main_source)
 
