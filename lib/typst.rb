@@ -68,7 +68,7 @@ module Typst
           fonts[Pathname.new(font_name).basename.to_s] = zipfile.file.read(font_name)
         end
 
-        from_s(tmp_main_file, dependencies: dependencies, fonts: fonts)
+        from_s(main_source, dependencies: dependencies, fonts: fonts)
       end
     end
   end
