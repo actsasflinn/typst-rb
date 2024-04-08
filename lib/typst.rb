@@ -17,7 +17,7 @@ module Typst
     end
 
     def write(output)
-      File.open(output, "w"){ |f| f.write(document) }
+      File.open(output, "wb"){ |f| f.write(document) }
     end
 
     def self.from_s(main_source, dependencies: {}, fonts: {})
