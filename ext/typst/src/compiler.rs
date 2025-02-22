@@ -1,9 +1,10 @@
 use chrono::{Datelike, Timelike};
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use codespan_reporting::term::{self, termcolor};
-use typst::diag::{Severity, SourceDiagnostic, StrResult};
-use typst::doc::Document;
-use typst::eval::{eco_format, Datetime, Tracer};
+use ecow::{eco_format, EcoString};
+use typst::diag::{Severity, SourceDiagnostic, StrResult, Warned};
+use typst::foundations::Datetime;
+use typst::layout::PagedDocument;
 use typst::syntax::{FileId, Source, Span};
 use typst::{World, WorldExt};
 
@@ -13,34 +14,33 @@ type CodespanResult<T> = Result<T, CodespanError>;
 type CodespanError = codespan_reporting::files::Error;
 
 impl SystemWorld {
-    pub fn compile_pdf(&mut self) -> StrResult<Vec<u8>> {
+    pub fn compile(
+        &mut self,
+        format: Option<&str>,
+        ppi: Option<f32>,
+        pdf_standards: &[typst_pdf::PdfStandard],
+    ) -> StrResult<Vec<Vec<u8>>> {
         // Reset everything and ensure that the main file is present.
         self.reset();
         self.source(self.main()).map_err(|err| err.to_string())?;
 
-        let mut tracer = Tracer::default();
-        let result = typst::compile(self, &mut tracer);
-        let warnings = tracer.warnings();
+        let Warned { output, warnings } = typst::compile(self);
 
-        match result {
+        match output {
             // Export the PDF / PNG.
-            Ok(document) => Ok(export_pdf(&document, self)?),
-            Err(errors) => Err(format_diagnostics(self, &errors, &warnings).unwrap().into()),
-        }
-    }
-
-    pub fn compile_svg(&mut self) -> StrResult<Vec<String>> {
-        // Reset everything and ensure that the main file is present.
-        self.reset();
-        self.source(self.main()).map_err(|err| err.to_string())?;
-
-        let mut tracer = Tracer::default();
-        let result = typst::compile(self, &mut tracer);
-        let warnings = tracer.warnings();
-
-        match result {
-            // Export the PDF / PNG.
-            Ok(document) => Ok(export_svg(&document)?),
+            Ok(document) => {
+                // Assert format is "pdf" or "png" or "svg"
+                match format.unwrap_or("pdf").to_ascii_lowercase().as_str() {
+                    "pdf" => Ok(vec![export_pdf(
+                        &document,
+                        self,
+                        typst_pdf::PdfStandards::new(pdf_standards)?,
+                    )?]),
+                    "png" => Ok(export_image(&document, ImageExportFormat::Png, ppi)?),
+                    "svg" => Ok(export_image(&document, ImageExportFormat::Svg, ppi)?),
+                    fmt => Err(eco_format!("unknown format: {fmt}")),
+                }
+            }
             Err(errors) => Err(format_diagnostics(self, &errors, &warnings).unwrap().into()),
         }
     }
@@ -48,20 +48,25 @@ impl SystemWorld {
 
 /// Export to a PDF.
 #[inline]
-fn export_pdf(document: &Document, world: &SystemWorld) -> StrResult<Vec<u8>> {
+fn export_pdf(
+    document: &PagedDocument,
+    world: &SystemWorld,
+    standards: typst_pdf::PdfStandards,
+) -> StrResult<Vec<u8>> {
     let ident = world.input().to_string_lossy();
-    let buffer = typst::export::pdf(document, Some(&ident), now());
-    Ok(buffer)
-}
-
-/// Export to one or multiple SVGs.
-#[inline]
-fn export_svg(document: &Document) -> StrResult<Vec<String>> {
-    let mut buffer: Vec<String> = Vec::new();
-    for (_i, frame) in document.pages.iter().enumerate() {
-        let svg = typst::export::svg(frame);
-        buffer.push(svg.to_string())
-    }
+    let buffer = typst_pdf::pdf(
+        document,
+        &typst_pdf::PdfOptions {
+            ident: typst::foundations::Smart::Custom(&ident),
+            timestamp: now().map(typst_pdf::Timestamp::new_utc),
+            standards,
+            ..Default::default()
+        },
+    )
+    .map_err(|e| match format_diagnostics(world, &e, &[]) {
+        Ok(e) => EcoString::from(e),
+        Err(err) => eco_format!("failed to print diagnostics ({err})"),
+    })?;
     Ok(buffer)
 }
 
@@ -76,6 +81,34 @@ fn now() -> Option<Datetime> {
         now.minute().try_into().ok()?,
         now.second().try_into().ok()?,
     )
+}
+
+/// An image format to export in.
+enum ImageExportFormat {
+    Png,
+    Svg,
+}
+
+/// Export the frames to PNGs or SVGs.
+fn export_image(
+    document: &PagedDocument,
+    fmt: ImageExportFormat,
+    ppi: Option<f32>,
+) -> StrResult<Vec<Vec<u8>>> {
+    let mut buffers = Vec::new();
+    for page in &document.pages {
+        let buffer = match fmt {
+            ImageExportFormat::Png => typst_render::render(page, ppi.unwrap_or(144.0) / 72.0)
+                .encode_png()
+                .map_err(|err| eco_format!("failed to write PNG file ({err})"))?,
+            ImageExportFormat::Svg => {
+                let svg = typst_svg::svg(page);
+                svg.as_bytes().to_vec()
+            }
+        };
+        buffers.push(buffer);
+    }
+    Ok(buffers)
 }
 
 /// Format diagnostic messages.\
@@ -141,7 +174,7 @@ impl<'a> codespan_reporting::files::Files<'a> for SystemWorld {
             // Try to express the path relative to the working directory.
             vpath
                 .resolve(self.root())
-                .and_then(|abs| pathdiff::diff_paths(&abs, self.workdir()))
+                .and_then(|abs| pathdiff::diff_paths(abs, self.workdir()))
                 .as_deref()
                 .unwrap_or_else(|| vpath.as_rootless_path())
                 .to_string_lossy()

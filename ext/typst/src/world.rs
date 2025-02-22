@@ -1,24 +1,23 @@
-use std::cell::{Cell, OnceCell, RefCell, RefMut};
-use std::collections::HashMap;
 use std::fs;
-use std::hash::Hash;
 use std::path::{Path, PathBuf};
-
-use log::{debug};
+use std::sync::{Mutex, OnceLock};
 
 use chrono::{DateTime, Datelike, Local};
-use comemo::Prehashed;
-use filetime::FileTime;
-use same_file::Handle;
-use siphasher::sip128::{Hasher128, SipHasher13};
+use ecow::eco_format;
 use typst::diag::{FileError, FileResult, StrResult};
-use typst::eval::{eco_format, Bytes, Datetime, Library};
-use typst::font::{Font, FontBook, FontVariant};
+use typst::foundations::{Bytes, Datetime, Dict};
 use typst::syntax::{FileId, Source, VirtualPath};
-use typst::World;
+use typst::text::{Font, FontBook};
+use typst::utils::LazyHash;
+use typst::{Library, LibraryBuilder, World};
+use typst_kit::{
+    fonts::{FontSearcher, FontSlot},
+    package::PackageStorage,
+};
 
-use crate::fonts::{FontSearcher, FontSlot};
-use crate::package::prepare_package;
+use std::collections::HashMap;
+
+use crate::download::SlientDownload;
 
 /// A world that provides access to the operating system.
 pub struct SystemWorld {
@@ -31,41 +30,39 @@ pub struct SystemWorld {
     /// The input path.
     main: FileId,
     /// Typst's standard library.
-    library: Prehashed<Library>,
+    library: LazyHash<Library>,
     /// Metadata about discovered fonts.
-    book: Prehashed<FontBook>,
+    book: LazyHash<FontBook>,
     /// Locations of and storage for lazily loaded fonts.
     fonts: Vec<FontSlot>,
-    /// Maps package-path combinations to canonical hashes. All package-path
-    /// combinations that point to the same file are mapped to the same hash. To
-    /// be used in conjunction with `paths`.
-    hashes: RefCell<HashMap<FileId, FileResult<PathHash>>>,
-    /// Maps canonical path hashes to source files and buffers.
-    slots: RefCell<HashMap<PathHash, PathSlot>>,
+    /// Maps file ids to source files and buffers.
+    slots: Mutex<HashMap<FileId, FileSlot>>,
+    /// Holds information about where packages are stored.
+    package_storage: PackageStorage,
     /// The current datetime if requested. This is stored here to ensure it is
     /// always the same within one compilation. Reset between compilations.
-    now: OnceCell<DateTime<Local>>,
+    now: OnceLock<DateTime<Local>>,
 }
 
 impl World for SystemWorld {
-    fn library(&self) -> &Prehashed<Library> {
+    fn library(&self) -> &LazyHash<Library> {
         &self.library
     }
 
-    fn book(&self) -> &Prehashed<FontBook> {
+    fn book(&self) -> &LazyHash<FontBook> {
         &self.book
     }
 
-    fn main(&self) -> Source {
-        self.source(self.main).unwrap()
+    fn main(&self) -> FileId {
+        self.main
     }
 
     fn source(&self, id: FileId) -> FileResult<Source> {
-        self.slot(id)?.source()
+        self.slot(id, |slot| slot.source(&self.root, &self.package_storage))
     }
 
     fn file(&self, id: FileId) -> FileResult<Bytes> {
-        self.slot(id)?.file()
+        self.slot(id, |slot| slot.file(&self.root, &self.package_storage))
     }
 
     fn font(&self, index: usize) -> Option<Font> {
@@ -94,34 +91,12 @@ impl SystemWorld {
     }
 
     /// Access the canonical slot for the given file id.
-    fn slot(&self, id: FileId) -> FileResult<RefMut<PathSlot>> {
-        let mut system_path = PathBuf::new();
-        let hash = self
-            .hashes
-            .borrow_mut()
-            .entry(id)
-            .or_insert_with(|| {
-                // Determine the root path relative to which the file path
-                // will be resolved.
-                let buf;
-                let mut root = &self.root;
-                if let Some(spec) = id.package() {
-                    buf = prepare_package(spec)?;
-                    root = &buf;
-                }
-                // Join the path to the root. If it tries to escape, deny
-                // access. Note: It can still escape via symlinks.
-                system_path = id.vpath().resolve(root).ok_or(FileError::AccessDenied)?;
-
-                PathHash::new(&system_path)
-            })
-            .clone()?;
-
-        Ok(RefMut::map(self.slots.borrow_mut(), |paths| {
-            paths
-                .entry(hash)
-                .or_insert_with(|| PathSlot::new(id, system_path))
-        }))
+    fn slot<F, T>(&self, id: FileId, f: F) -> T
+    where
+        F: FnOnce(&mut FileSlot) -> T,
+    {
+        let mut map = self.slots.lock().unwrap();
+        f(map.entry(id).or_insert_with(|| FileSlot::new(id)))
     }
 
     /// The id of the main source file.
@@ -141,8 +116,7 @@ impl SystemWorld {
 
     /// Reset the compilation state in preparation of a new compilation.
     pub fn reset(&mut self) {
-        self.hashes.borrow_mut().clear();
-        for slot in self.slots.borrow_mut().values_mut() {
+        for slot in self.slots.lock().unwrap().values_mut() {
             slot.reset();
         }
         self.now.take();
@@ -165,7 +139,8 @@ pub struct SystemWorldBuilder {
     root: PathBuf,
     main: PathBuf,
     font_paths: Vec<PathBuf>,
-    font_files: Vec<PathBuf>,
+    ignore_system_fonts: bool,
+    inputs: Dict,
 }
 
 impl SystemWorldBuilder {
@@ -174,7 +149,8 @@ impl SystemWorldBuilder {
             root,
             main,
             font_paths: Vec::new(),
-            font_files: Vec::new(),
+            ignore_system_fonts: false,
+            inputs: Dict::default(),
         }
     }
 
@@ -183,21 +159,20 @@ impl SystemWorldBuilder {
         self
     }
 
-    pub fn font_files(mut self, font_files: Vec<PathBuf>) -> Self {
-        self.font_files = font_files;
+    pub fn ignore_system_fonts(mut self, ignore: bool) -> Self {
+        self.ignore_system_fonts = ignore;
+        self
+    }
+
+    pub fn inputs(mut self, inputs: Dict) -> Self {
+        self.inputs = inputs;
         self
     }
 
     pub fn build(self) -> StrResult<SystemWorld> {
-        let mut searcher = FontSearcher::new();
-        searcher.search(&self.font_paths, &self.font_files);
-
-        for (name, infos) in searcher.book.families() {
-            for info in infos {
-                let FontVariant { style, weight, stretch } = info.variant;
-                debug!(target: "typst-rb", "font {name:?} variants - Style: {style:?}, Weight: {weight:?}, Stretch: {stretch:?}");
-            }
-        }    
+        let fonts = FontSearcher::new()
+            .include_system_fonts(!self.ignore_system_fonts)
+            .search_with(&self.font_paths);
 
         let input = self.main.canonicalize().map_err(|_| {
             eco_format!("input file not found (searched at {})", self.main.display())
@@ -211,12 +186,12 @@ impl SystemWorldBuilder {
             input,
             root: self.root,
             main: FileId::new(None, main_path),
-            library: Prehashed::new(typst_library::build()),
-            book: Prehashed::new(searcher.book),
-            fonts: searcher.fonts,
-            hashes: RefCell::default(),
-            slots: RefCell::default(),
-            now: OnceCell::new(),
+            library: LazyHash::new(LibraryBuilder::default().with_inputs(self.inputs).build()),
+            book: LazyHash::new(fonts.book),
+            fonts: fonts.fonts,
+            slots: Mutex::default(),
+            package_storage: PackageStorage::new(None, None, crate::download::downloader()),
+            now: OnceLock::new(),
         };
         Ok(world)
     }
@@ -225,23 +200,20 @@ impl SystemWorldBuilder {
 /// Holds canonical data for all paths pointing to the same entity.
 ///
 /// Both fields can be populated if the file is both imported and read().
-struct PathSlot {
+struct FileSlot {
     /// The slot's canonical file id.
     id: FileId,
-    /// The slot's path on the system.
-    path: PathBuf,
     /// The lazily loaded and incrementally updated source file.
     source: SlotCell<Source>,
     /// The lazily loaded raw byte buffer.
     file: SlotCell<Bytes>,
 }
 
-impl PathSlot {
+impl FileSlot {
     /// Create a new path slot.
-    fn new(id: FileId, path: PathBuf) -> Self {
+    fn new(id: FileId) -> Self {
         Self {
             id,
-            path,
             file: SlotCell::new(),
             source: SlotCell::new(),
         }
@@ -249,92 +221,107 @@ impl PathSlot {
 
     /// Marks the file as not yet accessed in preparation of the next
     /// compilation.
-    fn reset(&self) {
+    fn reset(&mut self) {
         self.source.reset();
         self.file.reset();
     }
 
-    fn source(&self) -> FileResult<Source> {
-        self.source.get_or_init(&self.path, |data, prev| {
-            let text = decode_utf8(&data)?;
-            if let Some(mut prev) = prev {
-                prev.replace(text);
-                Ok(prev)
-            } else {
-                Ok(Source::new(self.id, text.into()))
-            }
-        })
+    fn source(&mut self, root: &Path, package_storage: &PackageStorage) -> FileResult<Source> {
+        let id = self.id;
+        self.source.get_or_init(
+            || system_path(root, id, package_storage),
+            |data, prev| {
+                let text = decode_utf8(&data)?;
+                if let Some(mut prev) = prev {
+                    prev.replace(text);
+                    Ok(prev)
+                } else {
+                    Ok(Source::new(self.id, text.into()))
+                }
+            },
+        )
     }
 
-    fn file(&self) -> FileResult<Bytes> {
-        self.file.get_or_init(&self.path, |data, _| Ok(data.into()))
+    fn file(&mut self, root: &Path, package_storage: &PackageStorage) -> FileResult<Bytes> {
+        let id = self.id;
+        self.file.get_or_init(
+            || system_path(root, id, package_storage),
+            |data, _| Ok(Bytes::new(data)),
+        )
     }
+}
+
+/// The path of the slot on the system.
+fn system_path(root: &Path, id: FileId, package_storage: &PackageStorage) -> FileResult<PathBuf> {
+    // Determine the root path relative to which the file path
+    // will be resolved.
+    let buf;
+    let mut root = root;
+    if let Some(spec) = id.package() {
+        buf = package_storage.prepare_package(spec, &mut SlientDownload(&spec))?;
+        root = &buf;
+    }
+
+    // Join the path to the root. If it tries to escape, deny
+    // access. Note: It can still escape via symlinks.
+    id.vpath().resolve(root).ok_or(FileError::AccessDenied)
 }
 
 /// Lazily processes data for a file.
 struct SlotCell<T> {
-    data: RefCell<Option<FileResult<T>>>,
-    refreshed: Cell<FileTime>,
-    accessed: Cell<bool>,
+    /// The processed data.
+    data: Option<FileResult<T>>,
+    /// A hash of the raw file contents / access error.
+    fingerprint: u128,
+    /// Whether the slot has been accessed in the current compilation.
+    accessed: bool,
 }
 
 impl<T: Clone> SlotCell<T> {
     /// Creates a new, empty cell.
     fn new() -> Self {
         Self {
-            data: RefCell::new(None),
-            refreshed: Cell::new(FileTime::zero()),
-            accessed: Cell::new(false),
+            data: None,
+            fingerprint: 0,
+            accessed: false,
         }
     }
 
     /// Marks the cell as not yet accessed in preparation of the next
     /// compilation.
-    fn reset(&self) {
-        self.accessed.set(false);
+    fn reset(&mut self) {
+        self.accessed = false;
     }
 
     /// Gets the contents of the cell or initialize them.
     fn get_or_init(
-        &self,
-        path: &Path,
+        &mut self,
+        path: impl FnOnce() -> FileResult<PathBuf>,
         f: impl FnOnce(Vec<u8>, Option<T>) -> FileResult<T>,
     ) -> FileResult<T> {
-        let mut borrow = self.data.borrow_mut();
-        if let Some(data) = &*borrow {
-            if self.accessed.replace(true) || self.current(path) {
+        // If we accessed the file already in this compilation, retrieve it.
+        if std::mem::replace(&mut self.accessed, true) {
+            if let Some(data) = &self.data {
                 return data.clone();
             }
         }
 
-        self.accessed.set(true);
-        self.refreshed.set(FileTime::now());
-        let prev = borrow.take().and_then(Result::ok);
-        let value = read(path).and_then(|data| f(data, prev));
-        *borrow = Some(value.clone());
+        // Read and hash the file.
+        let result = path().and_then(|p| read(&p));
+        let fingerprint = typst::utils::hash128(&result);
+
+        // If the file contents didn't change, yield the old processed data.
+        if std::mem::replace(&mut self.fingerprint, fingerprint) == fingerprint {
+            if let Some(data) = &self.data {
+                return data.clone();
+            }
+        }
+
+        let prev = self.data.take().and_then(Result::ok);
+        let value = result.and_then(|data| f(data, prev));
+        self.data = Some(value.clone());
+
         value
-    }
-
-    /// Whether the cell contents are still up to date with the file system.
-    fn current(&self, path: &Path) -> bool {
-        fs::metadata(path).map_or(false, |meta| {
-            let modified = FileTime::from_last_modification_time(&meta);
-            modified < self.refreshed.get()
-        })
-    }
-}
-
-/// A hash that is the same for all paths pointing to the same entity.
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-struct PathHash(u128);
-
-impl PathHash {
-    fn new(path: &Path) -> FileResult<Self> {
-        let f = |e| FileError::from_io(e, path);
-        let handle = Handle::from_path(path).map_err(f)?;
-        let mut state = SipHasher13::new();
-        handle.hash(&mut state);
-        Ok(Self(state.finish128().as_u128()))
     }
 }
 

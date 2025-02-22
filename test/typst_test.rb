@@ -13,19 +13,19 @@ class TypstTest < Test::Unit::TestCase
 
   def test_pdf_assets
     assert {
-      Typst::Pdf.new("template_with_font_and_icon/main.typ", root: "template_with_font_and_icon")
+      Typst::Pdf.new("template_with_font_and_icon/main.typ", root: "#{File.dirname(__FILE__)}/template_with_font_and_icon")
     }
   end
 
   def test_pdf_without_font
     assert {
-      Typst::Pdf.new("template_with_font_and_icon/main.typ", root: "template_with_font_and_icon").document.include?("Fasthand") == false
+      Typst::Pdf.new("template_with_font_and_icon/main.typ", root: "#{File.dirname(__FILE__)}/template_with_font_and_icon").document.include?("Fasthand") == false
     }
   end
 
   def test_pdf_font
     assert {
-      Typst::Pdf.new("template_with_font_and_icon/main.typ", root: "template_with_font_and_icon", font_paths: ["./fonts/Fasthand/Release/ttf"]).document.include?("Fasthand")
+      Typst::Pdf.new("template_with_font_and_icon/main.typ", root: "#{File.dirname(__FILE__)}/template_with_font_and_icon", font_paths: ["fonts/Fasthand/Release/ttf"]).document.include?("Fasthand")
     }
   end
 
@@ -66,8 +66,8 @@ class TypstTest < Test::Unit::TestCase
 }
     }
 
-      icon = File.read("template_with_font_and_icon/monkey.svg")
-      font_bytes = File.read("./fonts/Fasthand/Release/ttf/Fasthand-Regular.ttf")
+      icon = File.read("#{File.dirname(__FILE__)}/template_with_font_and_icon/monkey.svg")
+      font_bytes = File.read("#{File.dirname(__FILE__)}//fonts/Fasthand/Release/ttf/Fasthand-Regular.ttf")
 
       Typst::Pdf.from_s(main, dependencies: { "template.typ" => template, "icon.svg" => icon }, fonts: { "Fasthand-Regular.ttf" => font_bytes })
     }

@@ -1,14 +1,15 @@
 use std::path::PathBuf;
 
-use magnus::{define_module, function, exception, Error, IntoValue};
+use magnus::{define_module, function, exception, Error }; //, IntoValue};
 use magnus::{prelude::*};
 
+use std::collections::HashMap;
+use typst::foundations::{Dict, Value};
 use world::SystemWorld;
 
 mod compiler;
 mod download;
-mod fonts;
-mod package;
+mod query;
 mod world;
 
 fn to_svg(
@@ -16,7 +17,9 @@ fn to_svg(
     root: Option<PathBuf>,
     font_paths: Vec<PathBuf>,
     resource_path: PathBuf,
-) -> Result<Vec<String>, Error> {
+    ignore_system_fonts: bool,
+    sys_inputs: HashMap<String, String>,
+) -> Result<Vec<Vec<u8>>, Error> {
     let input = input.canonicalize()
         .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?;
 
@@ -46,13 +49,18 @@ fn to_svg(
     }
 
     let mut world = SystemWorld::builder(root, input)
+        .inputs(Dict::from_iter(
+            sys_inputs
+                .into_iter()
+                .map(|(k, v)| (k.into(), Value::Str(v.into()))),
+        ))
         .font_paths(font_paths)
-        .font_files(default_fonts)
+        .ignore_system_fonts(ignore_system_fonts)
         .build()
         .map_err(|msg| magnus::Error::new(exception::arg_error(), msg.to_string()))?;
 
     let svg_bytes = world
-        .compile_svg()
+        .compile(Some("svg"), None, &Vec::new())
         .map_err(|msg| magnus::Error::new(exception::arg_error(), msg.to_string()))?;
 
     Ok(svg_bytes)
@@ -63,7 +71,9 @@ fn to_pdf(
     root: Option<PathBuf>,
     font_paths: Vec<PathBuf>,
     resource_path: PathBuf,
-) -> Result<Vec<u8>, Error> {
+    ignore_system_fonts: bool,
+    sys_inputs: HashMap<String, String>,
+) -> Result<Vec<Vec<u8>>, Error> {
     let input = input.canonicalize()
         .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?;
 
@@ -93,41 +103,29 @@ fn to_pdf(
     }
 
     let mut world = SystemWorld::builder(root, input)
+        .inputs(Dict::from_iter(
+            sys_inputs
+                .into_iter()
+                .map(|(k, v)| (k.into(), Value::Str(v.into()))),
+        ))
         .font_paths(font_paths)
-        .font_files(default_fonts)
+        .ignore_system_fonts(ignore_system_fonts)
         .build()
         .map_err(|msg| magnus::Error::new(exception::arg_error(), msg.to_string()))?;
 
     let pdf_bytes = world
-        .compile_pdf()
+        .compile(Some("pdf"), None, &Vec::new())
         .map_err(|msg| magnus::Error::new(exception::arg_error(), msg.to_string()))?;
 
     Ok(pdf_bytes)
 }
-
-fn write_pdf(
-    input: PathBuf,
-    output: PathBuf,
-    root: Option<PathBuf>,
-    font_paths: Vec<PathBuf>,
-    resource_path: PathBuf,
-) -> Result<magnus::Value, Error> {
-    let pdf_bytes = to_pdf(input, root, font_paths, resource_path)?;
-
-    std::fs::write(output, pdf_bytes)
-        .map_err(|_| magnus::Error::new(exception::arg_error(), "error"))?;
-
-    let value = true.into_value();
-    Ok(value)
-}    
 
 #[magnus::init]
 fn init() -> Result<(), Error> {
     env_logger::init();
 
     let module = define_module("Typst")?;
-    module.define_singleton_method("_to_pdf", function!(to_pdf, 4))?;
-    module.define_singleton_method("_write_pdf", function!(write_pdf, 5))?;
-    module.define_singleton_method("_to_svg", function!(to_svg, 4))?;
+    module.define_singleton_method("_to_pdf", function!(to_pdf, 6))?;
+    module.define_singleton_method("_to_svg", function!(to_svg, 6))?;
     Ok(())
 }

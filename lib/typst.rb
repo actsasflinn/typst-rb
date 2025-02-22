@@ -78,7 +78,7 @@ module Typst
     
     def initialize(input, root: ".", font_paths: [])
       super(input, root: root, font_paths: font_paths)
-      @bytes = Typst::_to_pdf(self.input, self.root, self.font_paths, File.dirname(__FILE__))
+      @bytes = Typst::_to_pdf(self.input, self.root, self.font_paths, File.dirname(__FILE__), false, {})[0]
     end
 
     def document
@@ -91,7 +91,7 @@ module Typst
     
     def initialize(input, root: ".", font_paths: [])
       super(input, root: root, font_paths: font_paths)
-      @pages = Typst::_to_svg(self.input, self.root, self.font_paths, File.dirname(__FILE__))
+      @pages = Typst::_to_svg(self.input, self.root, self.font_paths, File.dirname(__FILE__), false, {}).collect{ |page| page.pack("C*").to_s }
     end
 
     def write(output)

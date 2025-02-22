@@ -33,7 +33,7 @@ pages = Typst::Svg.new("readme.typ").pages
 # => ["<svg class=\"typst-doc\" viewBox=\"0 0 595.2764999999999 841.89105\" ..."
 
 # Compile `readme.typ` to SVG and save as `readme.html`
-Typst::Html.new("readme.typ", "README").write("readme.html")
+Typst::Html.new("readme.typ", title: "README").write("readme.html")
 
 # Or return HTML content
 markup = Typst::Html.new("readme.typ", title: "README").markup

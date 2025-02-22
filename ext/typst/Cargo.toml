@@ -1,33 +1,46 @@
 [package]
 name = "typst"
-version = "0.0.1"
+version = "0.13.0"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-chrono = { version = "0.4.24", default-features = false, features = [
+chrono = { version = "0.4.38", default-features = false, features = [
     "clock",
     "std",
 ] }
 codespan-reporting = "0.11"
-comemo = "0.3"
-dirs = "5"
+comemo = "0.4"
+dirs = "5" #
 ecow = "0.2"
-env_logger = "0.10.1"
-env_proxy = "0.4"
-filetime = "0.2.22"
-flate2 = "1"
-fontdb = "0.15.0"
-log = "0.4.20"
+env_logger = "0.10.1" #
+env_proxy = "0.4" #
+filetime = "0.2.22" #
+flate2 = "1" #
+fontdb = "0.15.0" #
+log = "0.4.20" #
 magnus = { version = "0.6" }
 pathdiff = "0.2"
-same-file = "1"
-siphasher = "1.0"
-tar = "0.4"
-typst = { git = "https://github.com/typst/typst.git", tag = "v0.9.0" }
-typst-library = { git = "https://github.com/typst/typst.git", tag = "v0.9.0" }
+same-file = "1" #
+siphasher = "1.0" #
+tar = "0.4" #
+#typst = { git = "https://github.com/typst/typst.git", tag = "v0.13.0" }
+#typst-library = { git = "https://github.com/typst/typst.git", tag = "v0.13.0" }
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+typst = "0.13.0"
+typst-kit = { version = "0.13.0", features = [
+    "downloads",
+    "embed-fonts",
+    "vendor-openssl",
+] }
+typst-pdf = "0.13.0"
+typst-svg = "0.13.0"
+typst-render = "0.13.0"
+typst-eval = "0.13.0"
 ureq = { version = "2", default-features = false, features = [
     "gzip",
     "socks-proxy",
