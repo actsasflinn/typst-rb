@@ -190,10 +190,10 @@ module Typst
       self.result = Typst::_query(selector, field, one, format, self.input, self.root, self.font_paths, File.dirname(__FILE__), false, {})
     end
 
-    def result
-      case format
+    def result(raw: false)
+      case raw || format
         when "json" then JSON(@result)
-        when "yaml" then YAML.parse(@result)
+        when "yaml" then YAML::safe_load(@result)
         else @result
       end
     end
