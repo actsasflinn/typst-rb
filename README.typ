@@ -39,8 +39,15 @@ pages = Typst::Svg.new("readme.typ").pages
 Typst::Html.new("readme.typ", "README").write("readme.html")
 
 # Or return HTML content
-markup = Typst::Html.new("readme.typ", title: "README").markup
+markup = Typst::Html.new("readme.typ", title: "README").document
 # => "\n<!DOCTYPE html>\n<html>\n<head>\n<title>README</title>\n</head>\n<bo..."
+
+# Use native Typst experimental HTML feature to write single frame HTML file
+Typst::HtmlExperimental.new("readme.typ").write("readme.html")
+
+# Or return single frame HTML content (using native Typst experimental HTML feature)
+markup = Typst::HtmlExperimental.new("readme.typ").document
+# => "<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\">\n..."
 
 # Compile from a string to PDF
 t = Typst::Pdf.from_s(%{hello world})
@@ -48,8 +55,11 @@ t = Typst::Pdf.from_s(%{hello world})
 # Compile from a string to SVG
 t = Typst::Svg.from_s(%{hello world})
 
-# Compile from a string to PDF
+# Compile from a string to SVG multi-frame/pages wrapped in HTML (non-native Typst)
 t = Typst::Html.from_s(%{hello world})
+
+# Compile from a string to single frame HTML (native Typst experimental feature)
+t = Typst::HtmlExperimental.from_s(%{hello world})
 
 # A more complex example of compiling from string
 main = %{

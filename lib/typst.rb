@@ -139,4 +139,18 @@ module Typst
     end
     alias_method :document, :markup
   end
+
+  class HtmlExperimental < Base
+    attr_accessor :bytes
+
+    def initialize(input, root: ".", font_paths: [])
+      super(input, root: root, font_paths: font_paths)
+      @bytes = Typst::_to_html(self.input, self.root, self.font_paths, File.dirname(__FILE__), false, {})[0]
+    end
+
+    def document
+      bytes.pack("C*").to_s
+    end
+    alias_method :markup, :document
+  end
 end

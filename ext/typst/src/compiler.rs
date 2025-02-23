@@ -4,6 +4,7 @@ use codespan_reporting::term::{self, termcolor};
 use ecow::{eco_format, EcoString};
 use typst::diag::{Severity, SourceDiagnostic, StrResult, Warned};
 use typst::foundations::Datetime;
+use typst::html::HtmlDocument;
 use typst::layout::PagedDocument;
 use typst::syntax::{FileId, Source, Span};
 use typst::{World, WorldExt};
@@ -24,26 +25,53 @@ impl SystemWorld {
         self.reset();
         self.source(self.main()).map_err(|err| err.to_string())?;
 
-        let Warned { output, warnings } = typst::compile(self);
-
-        match output {
-            // Export the PDF / PNG.
-            Ok(document) => {
-                // Assert format is "pdf" or "png" or "svg"
-                match format.unwrap_or("pdf").to_ascii_lowercase().as_str() {
-                    "pdf" => Ok(vec![export_pdf(
-                        &document,
-                        self,
-                        typst_pdf::PdfStandards::new(pdf_standards)?,
-                    )?]),
-                    "png" => Ok(export_image(&document, ImageExportFormat::Png, ppi)?),
-                    "svg" => Ok(export_image(&document, ImageExportFormat::Svg, ppi)?),
-                    fmt => Err(eco_format!("unknown format: {fmt}")),
+        match format.unwrap_or_else(|| "pdf").to_ascii_lowercase().as_str() {
+            "html" => {
+                let Warned { output, warnings } = typst::compile::<HtmlDocument>(self);
+                match output {
+                    Ok(document) => {
+                        Ok(vec![export_html(&document, self)?])
+                    }
+                    Err(errors) => Err(format_diagnostics(self, &errors, &warnings).unwrap().into()),
                 }
             }
-            Err(errors) => Err(format_diagnostics(self, &errors, &warnings).unwrap().into()),
+            _ => {
+                let Warned { output, warnings } = typst::compile::<PagedDocument>(self);
+                match output {
+                    // Export the PDF / PNG.
+                    Ok(document) => {
+                        // Assert format is "pdf" or "png" or "svg"
+                        match format.unwrap_or("pdf").to_ascii_lowercase().as_str() {
+                            "pdf" => Ok(vec![export_pdf(
+                                &document,
+                                self,
+                                typst_pdf::PdfStandards::new(pdf_standards)?,
+                            )?]),
+                            "png" => Ok(export_image(&document, ImageExportFormat::Png, ppi)?),
+                            "svg" => Ok(export_image(&document, ImageExportFormat::Svg, ppi)?),
+                            fmt => Err(eco_format!("unknown format: {fmt}")),
+                        }
+                    }
+                    Err(errors) => Err(format_diagnostics(self, &errors, &warnings).unwrap().into()),
+                }
+            }
         }
     }
+}
+
+/// Export to a PDF.
+#[inline]
+fn export_html(
+    document: &HtmlDocument,
+    world: &SystemWorld,
+) -> StrResult<Vec<u8>> {
+    let html = typst_html::html(document)
+    .map_err(|e| match format_diagnostics(world, &e, &[]) {
+        Ok(e) => EcoString::from(e),
+        Err(err) => eco_format!("failed to print diagnostics ({err})"),
+    })?;
+    let buffer = html.as_bytes().to_vec();
+    Ok(buffer)
 }
 
 /// Export to a PDF.

@@ -9,7 +9,7 @@ use typst::foundations::{Bytes, Datetime, Dict};
 use typst::syntax::{FileId, Source, VirtualPath};
 use typst::text::{Font, FontBook};
 use typst::utils::LazyHash;
-use typst::{Library, LibraryBuilder, World};
+use typst::{Features, Library, LibraryBuilder, World};
 use typst_kit::{
     fonts::{FontSearcher, FontSlot},
     package::PackageStorage,
@@ -141,6 +141,7 @@ pub struct SystemWorldBuilder {
     font_paths: Vec<PathBuf>,
     ignore_system_fonts: bool,
     inputs: Dict,
+    features: Features,
 }
 
 impl SystemWorldBuilder {
@@ -151,6 +152,7 @@ impl SystemWorldBuilder {
             font_paths: Vec::new(),
             ignore_system_fonts: false,
             inputs: Dict::default(),
+            features: Features::default(),
         }
     }
 
@@ -166,6 +168,11 @@ impl SystemWorldBuilder {
 
     pub fn inputs(mut self, inputs: Dict) -> Self {
         self.inputs = inputs;
+        self
+    }
+
+    pub fn features(mut self, features: Features) -> Self {
+        self.features = features;
         self
     }
 
@@ -186,7 +193,7 @@ impl SystemWorldBuilder {
             input,
             root: self.root,
             main: FileId::new(None, main_path),
-            library: LazyHash::new(LibraryBuilder::default().with_inputs(self.inputs).build()),
+            library: LazyHash::new(LibraryBuilder::default().with_inputs(self.inputs).with_features(self.features).build()),
             book: LazyHash::new(fonts.book),
             fonts: fonts.fonts,
             slots: Mutex::default(),
