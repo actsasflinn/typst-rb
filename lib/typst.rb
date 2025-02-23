@@ -112,6 +112,32 @@ module Typst
     end
   end
 
+  class Png < Base
+    attr_accessor :pages
+
+    def initialize(input, root: ".", font_paths: [])
+      super(input, root: root, font_paths: font_paths)
+      @pages = Typst::_to_png(self.input, self.root, self.font_paths, File.dirname(__FILE__), false, {}).collect{ |page| page.pack("C*").to_s }
+    end
+
+    def write(output)
+      if pages.size > 1
+        pages.each_with_index do |page, i|
+          if output.include?("{{n}}")
+            file_name = output.gsub("{{n}}", (i+1).to_s)
+          else
+            file_name = File.basename(output, File.extname(output)) + "_" + i.to_s
+            file_name = file_name + File.extname(output)
+          end
+          File.open(file_name, "w"){ |f| f.write(page) }
+        end
+      elsif pages.size == 1
+        File.open(output, "w"){ |f| f.write(pages[0]) }
+      else
+      end
+    end
+  end
+
   class Html < Base
     attr_accessor :title
     attr_accessor :svg
