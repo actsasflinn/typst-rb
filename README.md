@@ -25,12 +25,19 @@ pdf_bytes = Typst::Pdf.new("readme.typ").bytes
 document = Typst::Pdf.new("readme.typ").document
 # => "%PDF-1.7\n%\x80\x80\x80\x80\n\n4 0 obj\n<<\n  /Type /Font\n  /Subtype ..." 
 
-# Compile `readme.typ` to SVG and save as `readme.svg`
+# Compile `readme.typ` to SVG and save as `readme_0.svg`, `readme_1.svg`
 Typst::Svg.new("readme.typ").write("readme.svg")
 
 # Or return SVG content as an array of pages
 pages = Typst::Svg.new("readme.typ").pages
 # => ["<svg class=\"typst-doc\" viewBox=\"0 0 595.2764999999999 841.89105\" ..."
+
+# Compile `readme.typ` to PNG and save as `readme_0.png`, `readme_1.png`
+Typst::Png.new("readme.typ").write("readme.png")
+
+# Or return PNG content as an array of pages
+pages = Typst::Png.new("readme.typ").pages
+# => ["\x89PNG\r\n\x1A\n\x00\x00\x00\rIHDR\x00\x00\x04\xA7\x00\x00\x06\x94\b\ ...
 
 # Compile `readme.typ` to SVG and save as `readme.html`
 Typst::Html.new("readme.typ", title: "README").write("readme.html")
@@ -51,6 +58,9 @@ t = Typst::Pdf.from_s(%{hello world})
 
 # Compile from a string to SVG
 t = Typst::Svg.from_s(%{hello world})
+
+# Compile from a string to PNG
+t = Typst::Png.from_s(%{hello world})
 
 # Compile from a string to SVG multi-frame/pages wrapped in HTML (non-native Typst)
 t = Typst::Html.from_s(%{hello world})
@@ -87,6 +97,20 @@ Typst::Pdf::from_zip("working_directory.zip")
 
 # From a zip with a named main typst file
 Typst::Pdf::from_zip("working_directory.zip", "hello.typ")
+
+Typst::Query.new("heading", "readme.typ").result
+# => 
+# [{"func" => "heading",
+#   "level" => 1,
+#   "depth" => 1,
+# ...
+
+Typst::Query.new("heading", "readme.typ", format: "json").result(raw: true)
+# => "[\n  {\n    \"func\": \"heading\",\n    \"level\": 1,\n    \"depth\": ..."
+
+Typst::Query.new("heading", "readme.typ", format: "yaml").result(raw: true)
+# => "- func: heading\n  level: 1\n  depth: 1\n  offset: 0\n  numbering: ..."
+
 ```
 
 ## Contributors & Acknowledgements
