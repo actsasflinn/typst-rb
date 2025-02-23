@@ -4,6 +4,7 @@ use magnus::{define_module, function, exception, Error }; //, IntoValue};
 use magnus::{prelude::*};
 
 use std::collections::HashMap;
+use query::{query as typst_query, QueryCommand, SerializationFormat};
 use typst::foundations::{Dict, Value};
 use typst_library::Feature;
 use world::SystemWorld;
@@ -242,6 +243,79 @@ fn to_pdf(
     Ok(pdf_bytes)
 }
 
+fn query(
+    selector: String,
+    field: Option<String>,
+    one: bool,
+    format: Option<String>,
+    input: PathBuf,
+    root: Option<PathBuf>,
+    font_paths: Vec<PathBuf>,
+    resource_path: PathBuf,
+    ignore_system_fonts: bool,
+    sys_inputs: HashMap<String, String>,
+) -> Result<String, Error> {
+    let format = match format.unwrap().to_ascii_lowercase().as_str() {
+        "json" => SerializationFormat::Json,
+        "yaml" => SerializationFormat::Yaml,
+        _ => return Err(magnus::Error::new(exception::arg_error(), "unsupported serialization format"))?,
+    };
+
+    let input = input.canonicalize()
+        .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?;
+
+    let root = if let Some(root) = root {
+        root.canonicalize()
+            .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?
+    } else if let Some(dir) = input.parent() {
+        dir.into()
+    } else {
+        PathBuf::new()
+    };
+
+    let resource_path = resource_path.canonicalize()
+        .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?;
+
+    let mut default_fonts = Vec::new();
+    for entry in walkdir::WalkDir::new(resource_path.join("fonts")) {
+        let path = entry
+            .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?
+            .into_path();
+        let Some(extension) = path.extension() else {
+            continue;
+        };
+        if extension == "ttf" || extension == "otf" {
+            default_fonts.push(path);
+        }
+    }
+
+    let mut world = SystemWorld::builder(root, input)
+    .inputs(Dict::from_iter(
+        sys_inputs
+            .into_iter()
+            .map(|(k, v)| (k.into(), Value::Str(v.into()))),
+    ))
+    .font_paths(font_paths)
+    .ignore_system_fonts(ignore_system_fonts)
+    .build()
+    .map_err(|msg| magnus::Error::new(exception::arg_error(), msg.to_string()))?;
+
+    let result = typst_query(
+        &mut world,
+        &QueryCommand {
+            selector: selector.into(),
+            field: field.map(Into::into),
+            one,
+            format,
+        },
+    );
+
+    match result {
+        Ok(data) => Ok(data),
+        Err(msg) => Err(magnus::Error::new(exception::arg_error(), msg.to_string())),
+    }
+}
+
 #[magnus::init]
 fn init() -> Result<(), Error> {
     env_logger::init();
@@ -251,5 +325,6 @@ fn init() -> Result<(), Error> {
     module.define_singleton_method("_to_svg", function!(to_svg, 6))?;
     module.define_singleton_method("_to_png", function!(to_png, 6))?;
     module.define_singleton_method("_to_html", function!(to_html, 6))?;
+    module.define_singleton_method("_query", function!(query, 10))?;
     Ok(())
 }

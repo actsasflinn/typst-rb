@@ -179,4 +179,23 @@ module Typst
     end
     alias_method :markup, :document
   end
+
+  class Query < Base
+    attr_accessor :format
+    attr_accessor :result
+
+    def initialize(selector, input, field: nil, one: false, format: "json", root: ".", font_paths: [])
+      super(input, root: root, font_paths: font_paths)
+      self.format = format
+      self.result = Typst::_query(selector, field, one, format, self.input, self.root, self.font_paths, File.dirname(__FILE__), false, {})
+    end
+
+    def result
+      case format
+        when "json" then JSON(@result)
+        when "yaml" then YAML.parse(@result)
+        else @result
+      end
+    end
+  end
 end
