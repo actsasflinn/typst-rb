@@ -4,6 +4,6 @@ gemspec
 
 gem "rake"
 gem "rake-compiler", "~> 1.2"
-gem "rb_sys"
+gem "rb_sys", ">= 0.9.83"
 gem 'test-unit'
-gem 'zip'
+gem 'rubyzip', "~> 2.4"
