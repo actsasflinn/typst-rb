@@ -78,29 +78,23 @@ module Typst
       end
     end
 
-    def apply_inputs(sys_inputs)
+    def with_inputs(sys_inputs)
       self.sys_inputs = sys_inputs
       self
     end
 
-    def to_pdf
-      Pdf.new(self.input, root: self.root, font_paths: self.font_paths, sys_inputs: self.sys_inputs)
-    end
+    def to(format)
+      formats = { pdf: Pdf, svg: Svg, png: Png, html: Html, html_experimental: HtmlExperimental }
 
-    def to_svg
-      Svg.new(self.input, root: self.root, font_paths: self.font_paths, sys_inputs: self.sys_inputs)
-    end
-
-    def to_png
-      Png.new(self.input, root: self.root, font_paths: self.font_paths, sys_inputs: self.sys_inputs)
-    end
-
-    def to_html
-      Html.new(self.input, root: self.root, font_paths: self.font_paths, sys_inputs: self.sys_inputs)
-    end
-
-    def to_html_experimental
-      HtmlExperimental.new(self.input, root: self.root, font_paths: self.font_paths, sys_inputs: self.sys_inputs)
+      if self.input.is_a?(Hash)
+        if self.input.has_key?(:from_s)
+          formats[format].from_s(self.input[:from_s], dependencies: self.input[:dependencies], fonts: self.input[:fonts], sys_inputs: self.sys_inputs)
+        elsif self.input.has_key?(:from_zip)
+          formats[format].from_zip(self.input[:from_zip], self.input[:main_file], sys_inputs: self.sys_inputs)
+        end
+      else
+        formats[format].new(self.input, root: self.root, font_paths: self.font_paths, sys_inputs: self.sys_inputs)
+      end
     end
   end
 
