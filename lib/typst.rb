@@ -4,6 +4,10 @@ require "pathname"
 require "tmpdir"
 require "zip/filesystem"
 
+def Typst(input, root: ".", font_paths: [], sys_inputs: {})
+  Typst::Base.new(input, root: root, font_paths: font_paths, sys_inputs: sys_inputs)
+end
+
 module Typst
   class Base
     attr_accessor :input
@@ -72,6 +76,31 @@ module Typst
 
         from_s(main_source, dependencies: dependencies, fonts: fonts, sys_inputs: sys_inputs)
       end
+    end
+
+    def apply_inputs(sys_inputs)
+      self.sys_inputs = sys_inputs
+      self
+    end
+
+    def to_pdf
+      Pdf.new(self.input, root: self.root, font_paths: self.font_paths, sys_inputs: self.sys_inputs)
+    end
+
+    def to_svg
+      Svg.new(self.input, root: self.root, font_paths: self.font_paths, sys_inputs: self.sys_inputs)
+    end
+
+    def to_png
+      Png.new(self.input, root: self.root, font_paths: self.font_paths, sys_inputs: self.sys_inputs)
+    end
+
+    def to_html
+      Html.new(self.input, root: self.root, font_paths: self.font_paths, sys_inputs: self.sys_inputs)
+    end
+
+    def to_html_experimental
+      HtmlExperimental.new(self.input, root: self.root, font_paths: self.font_paths, sys_inputs: self.sys_inputs)
     end
   end
 

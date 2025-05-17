@@ -91,6 +91,9 @@ font_bytes = File.read("Example.ttf")
 
 t = Typst::Pdf.from_s(main, dependencies: { "template.typ" => template, "icon.svg" => icon }, fonts: { "Example.ttf" => font_bytes })
 
+# Chain methods
+Typst("readme.typ").to_pdf.write("readme.pdf")
+
 # Pass values into a typst template using sys_inputs
 sys_inputs_example = %{
 #let persons = json(bytes(sys.inputs.persons))
@@ -100,6 +103,12 @@ sys_inputs_example = %{
 ]
 }
 Typst::Pdf.from_s(sys_inputs_example, sys_inputs: { "persons" => [{"name": "John", "age": 35}, {"name": "Xoliswa", "age": 45}].to_json }).write("sys_inputs_example.pdf")
+
+# Apply inputs to a template to product multiple PDFs
+t = Typst("sys_inputs_example.typ")
+[{"name" => "John", "age" => 35}, {"name" => "Xoliswa", "age" => 45}].each do |person|
+  t.apply_inputs({ "persons" => [person].to_json }).to_pdf.write("#{person['name']}.pdf")
+end
 
 # From a zip file that includes a main.typ
 # zip file include flat dependencies included and a fonts directory
