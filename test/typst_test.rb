@@ -108,4 +108,28 @@ class TypstTest < Test::Unit::TestCase
       Typst::Svg::from_zip("two.zip")
     }
   end
+
+  def test_sys_inputs
+    require "json"
+    require "hexapdf"
+    require "#{File.dirname(__FILE__)}/text_processor.rb"
+
+    # Pass values into a typst template using sys_inputs
+    sys_inputs_example = %{
+    #let persons = json(bytes(sys.inputs.persons))
+
+    #for person in persons [
+      #person.name is #person.age years old.\\
+    ]
+    }
+    t = Typst::Pdf.from_s(sys_inputs_example, sys_inputs: { "persons" => [{"name": "John", "age": 35}, {"name": "Xoliswa", "age": 45}].to_json })
+
+    reader = HexaPDF::Document.new(io: StringIO.open(t.document))
+    processor = GetTextProcessor.new
+    reader.pages.each{ |page| page.process_contents(processor) }
+
+    assert {
+      processor.string == "John is 35 years old.\nXoliswa is 45 years old.\n"
+    }
+  end
 end

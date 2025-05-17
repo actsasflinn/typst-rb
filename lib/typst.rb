@@ -9,18 +9,20 @@ module Typst
     attr_accessor :input
     attr_accessor :root
     attr_accessor :font_paths
+    attr_accessor :sys_inputs
 
-    def initialize(input, root: ".", font_paths: [])
+    def initialize(input, root: ".", font_paths: [], sys_inputs: {})
       self.input = input
       self.root = Pathname.new(root).expand_path.to_s
       self.font_paths = font_paths.collect{ |fp| Pathname.new(fp).expand_path.to_s }
+      self.sys_inputs = sys_inputs
     end
 
     def write(output)
       File.open(output, "wb"){ |f| f.write(document) }
     end
 
-    def self.from_s(main_source, dependencies: {}, fonts: {})
+    def self.from_s(main_source, dependencies: {}, fonts: {}, sys_inputs: {})
       dependencies = {} if dependencies.nil?
       fonts = {} if fonts.nil?
       Dir.mktmpdir do |tmp_dir|
@@ -39,11 +41,11 @@ module Typst
           File.write(tmp_font_file, font_bytes)
         end
 
-        new(tmp_main_file, root: tmp_dir, font_paths: [relative_font_path])
+        new(tmp_main_file, root: tmp_dir, font_paths: [relative_font_path], sys_inputs: sys_inputs)
       end
     end
 
-    def self.from_zip(zip_file_path, main_file = nil)
+    def self.from_zip(zip_file_path, main_file = nil, sys_inputs: {})
       dependencies = {}
       fonts = {}
 
@@ -68,7 +70,7 @@ module Typst
           fonts[Pathname.new(font_name).basename.to_s] = zipfile.file.read(font_name)
         end
 
-        from_s(main_source, dependencies: dependencies, fonts: fonts)
+        from_s(main_source, dependencies: dependencies, fonts: fonts, sys_inputs: sys_inputs)
       end
     end
   end
@@ -76,9 +78,9 @@ module Typst
   class Pdf < Base
     attr_accessor :bytes
     
-    def initialize(input, root: ".", font_paths: [])
-      super(input, root: root, font_paths: font_paths)
-      @bytes = Typst::_to_pdf(self.input, self.root, self.font_paths, File.dirname(__FILE__), false, {})[0]
+    def initialize(input, root: ".", font_paths: [], sys_inputs: {})
+      super(input, root: root, font_paths: font_paths, sys_inputs: sys_inputs)
+      @bytes = Typst::_to_pdf(self.input, self.root, self.font_paths, File.dirname(__FILE__), false, sys_inputs)[0]
     end
 
     def document
@@ -89,9 +91,9 @@ module Typst
   class Svg < Base
     attr_accessor :pages
     
-    def initialize(input, root: ".", font_paths: [])
-      super(input, root: root, font_paths: font_paths)
-      @pages = Typst::_to_svg(self.input, self.root, self.font_paths, File.dirname(__FILE__), false, {}).collect{ |page| page.pack("C*").to_s }
+    def initialize(input, root: ".", font_paths: [], sys_inputs: {})
+      super(input, root: root, font_paths: font_paths, sys_inputs: sys_inputs)
+      @pages = Typst::_to_svg(self.input, self.root, self.font_paths, File.dirname(__FILE__), false, sys_inputs).collect{ |page| page.pack("C*").to_s }
     end
 
     def write(output)
@@ -115,9 +117,9 @@ module Typst
   class Png < Base
     attr_accessor :pages
 
-    def initialize(input, root: ".", font_paths: [])
-      super(input, root: root, font_paths: font_paths)
-      @pages = Typst::_to_png(self.input, self.root, self.font_paths, File.dirname(__FILE__), false, {}).collect{ |page| page.pack("C*").to_s }
+    def initialize(input, root: ".", font_paths: [], sys_inputs: {})
+      super(input, root: root, font_paths: font_paths, sys_inputs: sys_inputs)
+      @pages = Typst::_to_png(self.input, self.root, self.font_paths, File.dirname(__FILE__), false, sys_inputs).collect{ |page| page.pack("C*").to_s }
     end
 
     def write(output)
@@ -143,11 +145,11 @@ module Typst
     attr_accessor :svg
     attr_accessor :html
 
-    def initialize(input, title: nil, root: ".", font_paths: [])
-      super(input, root: root, font_paths: font_paths)
+    def initialize(input, title: nil, root: ".", font_paths: [], sys_inputs: {})
+      super(input, root: root, font_paths: font_paths, sys_inputs: sys_inputs)
       title = title || File.basename(input, File.extname(input))
       self.title = CGI::escapeHTML(title)
-      self.svg = Svg.new(self.input, root: self.root, font_paths: self.font_paths)
+      self.svg = Svg.new(self.input, root: self.root, font_paths: self.font_paths, sys_inputs: sys_inputs)
     end
   
     def markup
@@ -169,9 +171,9 @@ module Typst
   class HtmlExperimental < Base
     attr_accessor :bytes
 
-    def initialize(input, root: ".", font_paths: [])
-      super(input, root: root, font_paths: font_paths)
-      @bytes = Typst::_to_html(self.input, self.root, self.font_paths, File.dirname(__FILE__), false, {})[0]
+    def initialize(input, root: ".", font_paths: [], sys_inputs: {})
+      super(input, root: root, font_paths: font_paths, sys_inputs: sys_inputs)
+      @bytes = Typst::_to_html(self.input, self.root, self.font_paths, File.dirname(__FILE__), false, sys_inputs)[0]
     end
 
     def document
@@ -184,10 +186,10 @@ module Typst
     attr_accessor :format
     attr_accessor :result
 
-    def initialize(selector, input, field: nil, one: false, format: "json", root: ".", font_paths: [])
-      super(input, root: root, font_paths: font_paths)
+    def initialize(selector, input, field: nil, one: false, format: "json", root: ".", font_paths: [], sys_inputs: {})
+      super(input, root: root, font_paths: font_paths, sys_inputs: sys_inputs)
       self.format = format
-      self.result = Typst::_query(selector, field, one, format, self.input, self.root, self.font_paths, File.dirname(__FILE__), false, {})
+      self.result = Typst::_query(selector, field, one, format, self.input, self.root, self.font_paths, File.dirname(__FILE__), false, sys_inputs)
     end
 
     def result(raw: false)
