@@ -4,31 +4,74 @@ require "pathname"
 require "tmpdir"
 require "zip/filesystem"
 
-def Typst(input, root: ".", font_paths: [], sys_inputs: {})
-  Typst::Base.new(input, root: root, font_paths: font_paths, sys_inputs: sys_inputs)
+def Typst(*options)
+  Typst::Base.new(*options)
 end
 
 module Typst
   class Base
-    attr_accessor :input
-    attr_accessor :root
-    attr_accessor :font_paths
-    attr_accessor :sys_inputs
+    attr_accessor :options
+    #attr_accessor :typst_args
 
-    def initialize(input, root: ".", font_paths: [], sys_inputs: {})
-      self.input = input
-      self.root = Pathname.new(root).expand_path.to_s
-      self.font_paths = font_paths.collect{ |fp| Pathname.new(fp).expand_path.to_s }
-      self.sys_inputs = sys_inputs
+    def initialize(*options)
+      if options.size.zero?
+        raise "No options given"
+      elsif options.first.is_a?(String)
+        file, options = options
+        options ||= {}
+        options[:file] = file
+      elsif options.first.is_a?(Hash)
+        options = options.first
+      end
+
+      if options.has_key?(:file)
+        raise "Can't find file" unless File.exist?(options[:file])
+      elsif options.has_key?(:template)
+        raise "Empty template" if options[:template].to_s.empty?
+      elsif options.has_key?(:zip)
+        raise "Can't find zip" unless File.exist?(options[:zip])
+      else
+        raise "No input given"
+      end
+
+      root = Pathname.new(options[:root] || ".").expand_path
+      raise "Invalid path for root" unless root.exist?
+      options[:root] = root.to_s
+
+      font_paths = (options[:font_paths] || []).collect{ |fp| Pathname.new(fp).expand_path }
+      options[:font_paths] = font_paths.collect(&:to_s)
+
+      options[:sys_inputs] ||= {}
+    
+      self.options = options
     end
 
-    def write(output)
-      File.open(output, "wb"){ |f| f.write(document) }
+    def typst_args
+      typst_args = [options[:file], options[:root], options[:font_paths], File.dirname(__FILE__), false, options[:sys_inputs].map{ |k,v| [k.to_s,v.to_s] }.to_h]
     end
 
-    def self.from_s(main_source, dependencies: {}, fonts: {}, sys_inputs: {})
-      dependencies = {} if dependencies.nil?
-      fonts = {} if fonts.nil?
+    def write(output, segments = [document])
+      if segments.nil? || !segments.is_a?(Array) || segments.size.zero?
+        raise "Nothing to write"
+      elsif segments.size == 1
+        File.write(output, segments.first, mode: "wb")
+      elsif segments.size > 1
+        segments.each_with_index do |data, i|
+          if output.include?("{{n}}")
+            fn = output.gsub("{{n}}", (i+1).to_s)
+          else
+            fn = File.basename(output, File.extname(output)) + "_" + i.to_s
+            fn = fn + File.extname(output)
+          end
+          write(fn, [data])
+        end
+      end
+    end
+
+    def self.from_s(main_source, **options)
+      dependencies = options[:dependencies] ||= {}
+      fonts = options[:fonts] ||= {}
+
       Dir.mktmpdir do |tmp_dir|
         tmp_main_file = Pathname.new(tmp_dir).join("main.typ")
         File.write(tmp_main_file, main_source)
@@ -45,13 +88,17 @@ module Typst
           File.write(tmp_font_file, font_bytes)
         end
 
-        new(tmp_main_file, root: tmp_dir, font_paths: [relative_font_path], sys_inputs: sys_inputs)
+        options[:file] = tmp_main_file
+        options[:root] = tmp_dir
+        options[:font_paths] = [relative_font_path]
+
+        new(**options)
       end
     end
 
-    def self.from_zip(zip_file_path, main_file = nil, sys_inputs: {})
-      dependencies = {}
-      fonts = {}
+    def self.from_zip(zip_file_path, main_file = nil, **options)
+      options[:dependencies] ||= {}
+      options[:fonts] ||= {}
 
       Zip::File.open(zip_file_path) do |zipfile|
         file_names = zipfile.dir.glob("*").collect{ |f| f.name }
@@ -66,34 +113,39 @@ module Typst
         file_names.delete("fonts/")
 
         file_names.each do |dep_name|
-          dependencies[dep_name] = zipfile.file.read(dep_name)
+          options[:dependencies][dep_name] = zipfile.file.read(dep_name)
         end
 
         font_file_names = zipfile.dir.glob("fonts/*").collect{ |f| f.name }
         font_file_names.each do |font_name|
-          fonts[Pathname.new(font_name).basename.to_s] = zipfile.file.read(font_name)
+          options[:fonts][Pathname.new(font_name).basename.to_s] = zipfile.file.read(font_name)
         end
 
-        from_s(main_source, dependencies: dependencies, fonts: fonts, sys_inputs: sys_inputs)
+        options[:main_file] = tmp_main_file
+
+        from_s(main_source, **options)
       end
     end
 
-    def with_inputs(sys_inputs)
-      self.sys_inputs = sys_inputs
+    def with_inputs(inputs)
+      self.options[:sys_inputs] = self.options[:sys_inputs].merge(inputs)
       self
     end
 
-    def to(format)
+    def to(format, **options)
       formats = { pdf: Pdf, svg: Svg, png: Png, html: Html, html_experimental: HtmlExperimental }
+      raise "Invalid format" if formats[format].nil?
 
-      if self.input.is_a?(Hash)
-        if self.input.has_key?(:from_s)
-          formats[format].from_s(self.input[:from_s], dependencies: self.input[:dependencies], fonts: self.input[:fonts], sys_inputs: self.sys_inputs)
-        elsif self.input.has_key?(:from_zip)
-          formats[format].from_zip(self.input[:from_zip], self.input[:main_file], sys_inputs: self.sys_inputs)
-        end
+      options = self.options.merge(options)
+
+      if options.has_key?(:file)
+        formats[format].new(**options)
+      elsif options.has_key?(:template)
+        formats[format].from_s(options[:template], **options)
+      elsif options.has_key?(:zip)
+        formats[format].from_zip(options[:zip], **options)
       else
-        formats[format].new(self.input, root: self.root, font_paths: self.font_paths, sys_inputs: self.sys_inputs)
+        raise "No input given"
       end
     end
   end
@@ -101,9 +153,9 @@ module Typst
   class Pdf < Base
     attr_accessor :bytes
     
-    def initialize(input, root: ".", font_paths: [], sys_inputs: {})
-      super(input, root: root, font_paths: font_paths, sys_inputs: sys_inputs)
-      @bytes = Typst::_to_pdf(self.input, self.root, self.font_paths, File.dirname(__FILE__), false, sys_inputs)[0]
+    def initialize(*options)
+      super(*options)
+      @bytes = Typst::_to_pdf(*self.typst_args)[0]
     end
 
     def document
@@ -114,65 +166,37 @@ module Typst
   class Svg < Base
     attr_accessor :pages
     
-    def initialize(input, root: ".", font_paths: [], sys_inputs: {})
-      super(input, root: root, font_paths: font_paths, sys_inputs: sys_inputs)
-      @pages = Typst::_to_svg(self.input, self.root, self.font_paths, File.dirname(__FILE__), false, sys_inputs).collect{ |page| page.pack("C*").to_s }
+    def initialize(*options)
+      super(*options)
+      @pages = Typst::_to_svg(*self.typst_args).collect{ |page| page.pack("C*").to_s }
     end
 
-    def write(output)
-      if pages.size > 1
-        pages.each_with_index do |page, i|
-          if output.include?("{{n}}")
-            file_name = output.gsub("{{n}}", (i+1).to_s)
-          else
-            file_name = File.basename(output, File.extname(output)) + "_" + i.to_s
-            file_name = file_name + File.extname(output)
-          end
-          File.open(file_name, "w"){ |f| f.write(page) }
-        end
-      elsif pages.size == 1
-        File.open(output, "w"){ |f| f.write(pages[0]) }
-      else
-      end
+    def write(output, segments = self.pages)
+      super(output, segments)
     end
   end
 
   class Png < Base
     attr_accessor :pages
 
-    def initialize(input, root: ".", font_paths: [], sys_inputs: {})
-      super(input, root: root, font_paths: font_paths, sys_inputs: sys_inputs)
-      @pages = Typst::_to_png(self.input, self.root, self.font_paths, File.dirname(__FILE__), false, sys_inputs).collect{ |page| page.pack("C*").to_s }
+    def initialize(*options)
+      super(*options)
+      @pages = Typst::_to_png(*self.typst_args).collect{ |page| page.pack("C*").to_s }
     end
 
-    def write(output)
-      if pages.size > 1
-        pages.each_with_index do |page, i|
-          if output.include?("{{n}}")
-            file_name = output.gsub("{{n}}", (i+1).to_s)
-          else
-            file_name = File.basename(output, File.extname(output)) + "_" + i.to_s
-            file_name = file_name + File.extname(output)
-          end
-          File.open(file_name, "w"){ |f| f.write(page) }
-        end
-      elsif pages.size == 1
-        File.open(output, "w"){ |f| f.write(pages[0]) }
-      else
-      end
+    def write(output, segments = self.pages)
+      super(output, segments)
     end
   end
 
-  class Html < Base
+  class Html < Svg
     attr_accessor :title
-    attr_accessor :svg
-    attr_accessor :html
 
-    def initialize(input, title: nil, root: ".", font_paths: [], sys_inputs: {})
-      super(input, root: root, font_paths: font_paths, sys_inputs: sys_inputs)
-      title = title || File.basename(input, File.extname(input))
+    def initialize(*options)
+      super(*options)
+
+      title = self.options[:title] || File.basename(self.options[:file], File.extname(self.options[:file]))
       self.title = CGI::escapeHTML(title)
-      self.svg = Svg.new(self.input, root: self.root, font_paths: self.font_paths, sys_inputs: sys_inputs)
     end
   
     def markup
@@ -183,7 +207,7 @@ module Typst
 <title>#{title}</title>
 </head>
 <body>
-#{svg.pages.join("<br />")}
+#{pages.join("<br />")}
 </body>
 </html>
       }
@@ -194,9 +218,11 @@ module Typst
   class HtmlExperimental < Base
     attr_accessor :bytes
 
-    def initialize(input, root: ".", font_paths: [], sys_inputs: {})
-      super(input, root: root, font_paths: font_paths, sys_inputs: sys_inputs)
-      @bytes = Typst::_to_html(self.input, self.root, self.font_paths, File.dirname(__FILE__), false, sys_inputs)[0]
+    def initialize(*options)
+      super(*options)
+      options = self.options
+
+      @bytes = Typst::_to_html(*self.typst_args)[0]
     end
 
     def document
