@@ -144,22 +144,22 @@ module Typst
     end
 
     def write(output)
-      puts "DEPRECATION WARNING: this method will go away in a future version"
+      STDERR.puts "DEPRECATION WARNING: this method will go away in a future version"
       compiled.write(output)
     end
 
     def document
-      puts "DEPRECATION WARNING: this method will go away in a future version"
+      STDERR.puts "DEPRECATION WARNING: this method will go away in a future version"
       compiled.document
     end
 
     def bytes
-      puts "DEPRECATION WARNING: this method will go away in a future version"
+      STDERR.puts "DEPRECATION WARNING: this method will go away in a future version"
       compiled.bytes
     end
 
     def pages
-      puts "DEPRECATION WARNING: this method will go away in a future version"
+      STDERR.puts "DEPRECATION WARNING: this method will go away in a future version"
       compiled.pages
     end
   end
