@@ -18,40 +18,40 @@ require "typst"
 t = Typst("readme.typ")
 
 # Compile a template file and write the output to a PDF file
-Typst("readme.typ").to(:pdf).write("readme.pdf")
+Typst("readme.typ").compile(:pdf).write("readme.pdf")
 
 # Use a typst template string
-t = Typst(from_s: %{hello world})
+t = Typst(template: %{hello world})
 
 # Use a typst template in a zip file
-t = Typst(from_zip: "test/main.typ.zip")
+t = Typst(zip: "test/main.typ.zip")
 
 # Compile to PDF
-f = t.to(:pdf)
+f = t.compile(:pdf)
 
 # Compile to SVG
-f = t.to(:svg)
+f = t.compile(:svg)
 
 # Compile to PNG
-f = t.to(:png)
+f = t.compile(:png)
 
 # Compile to SVGs enveloped in HTML
 # Depracation warning: this feature will go away once Typst HTML moves out of experimental
-f = t.to(:html, title: "Typst+Ruby")
+f = t.compile(:html, title: "Typst+Ruby")
 
 # Compile to HTML (using Typst expirmental HTML)
-f = t.to(:html_experimental)
+f = t.compile(:html_experimental)
 
 # Access PDF or HTML output as a string
 # Note: For PDF and PNG this will give data, for SVG and HTML this will give markup
-Typst("readme.typ").to(:pdf).document
+Typst("readme.typ").compile(:pdf).document
 # => "%PDF-1.7\n%\x80\x80\x80\x80\n\n4 0 obj\n<<\n  /Type /Font\n  /Subtype ..." 
-Typst("readme.typ").to(:html).document
+Typst("readme.typ").compile(:html).document
 # => "\n<!DOCTYPE html>\n<html>\n<head>\n<title>main</title>\n</head>\n<body>\n<svg class=\"typst-doc\" ...
 
 
 # Or return content as an array of bytes
-pdf_bytes = Typst("readme.typ").to(:pdf).bytes
+pdf_bytes = Typst("readme.typ").compile(:pdf).bytes
 # => [37, 80, 68, 70, 45, 49, 46, 55, 10, 37, 128 ...]
 
 # Write the output to a file
@@ -59,11 +59,11 @@ pdf_bytes = Typst("readme.typ").to(:pdf).bytes
 f.write("filename.pdf")
 
 # Return SVG, HTML or PNG content as an array of pages
-Typst("readme.typ").to(:svg).pages
+Typst("readme.typ").compile(:svg).pages
 # => ["<svg class=\"typst-doc\" viewBox=\"0 0 595.2764999999999 841.89105\" ..."
-Typst("readme.typ").to(:html).pages
+Typst("readme.typ").compile(:html).pages
 # => ["<svg class=\"typst-doc\" viewBox=\"0 0 595.2764999999999 841.89105\" ..."
-Typst("readme.typ").to(:png).pages
+Typst("readme.typ").compile(:png).pages
 # => ["\x89PNG\r\n\x1A\n\x00\x00\x00\rIHDR\x00\x00\x04\xA7\x00\x00\x06\x94\b\ ...
 
 # Pass values into a typst template using Typst sys_inputs
@@ -76,13 +76,13 @@ sys_inputs_example = %{
 }
 people = [{"name" => "John", "age" => 35}, {"name" => "Xoliswa", "age" => 45}]
 data = { "persons" => people.to_json }
-Typst(template: sys_inputs_example, sys_inputs: data).to(:pdf).write("sys_inputs_example.pdf")
+Typst(template: sys_inputs_example, sys_inputs: data).compile(:pdf).write("sys_inputs_example.pdf")
 
 # Apply inputs to a template to product multiple PDFs
 
 t = Typst(template: sys_inputs_example)
 people.each do |person|
-  t.with_inputs({ "persons" => [person].to_json }).to(:pdf).write("#{person['name']}.pdf")
+  t.with_inputs({ "persons" => [person].to_json }).compile(:pdf).write("#{person['name']}.pdf")
 end
 
 # A more complex example of compiling from string
@@ -106,10 +106,10 @@ template = %{
 icon = File.read("icon.svg")
 font_bytes = File.read("Example.ttf")
 
-Typst(template: main, dependencies: { "template.typ" => template, "icon.svg" => icon }, fonts: { "Example.ttf" => font_bytes }).to(:pdf)
+Typst(template: main, dependencies: { "template.typ" => template, "icon.svg" => icon }, fonts: { "Example.ttf" => font_bytes }).compile(:pdf)
  
 # From a zip with a named main typst file
-Typst(zip: "test/main.typ.zip", main_file: "hello.typ").to(:pdf)
+Typst(zip: "test/main.typ.zip", main_file: "hello.typ").compile(:pdf)
 
 Typst::Query.new("heading", "readme.typ").result
 # => 
