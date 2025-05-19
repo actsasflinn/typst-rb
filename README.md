@@ -14,11 +14,11 @@ gem install typst
 ```ruby
 require "typst"
 
-# Use a typst template file `readme.typ`
-t = Typst("readme.typ")
-
 # Compile a template file and write the output to a PDF file
 Typst("readme.typ").compile(:pdf).write("readme.pdf")
+
+# Use a typst template file `readme.typ`
+t = Typst("readme.typ")
 
 # Use a typst template string
 t = Typst(template: %{hello world})
@@ -48,7 +48,6 @@ Typst("readme.typ").compile(:pdf).document
 # => "%PDF-1.7\n%\x80\x80\x80\x80\n\n4 0 obj\n<<\n  /Type /Font\n  /Subtype ..." 
 Typst("readme.typ").compile(:html).document
 # => "\n<!DOCTYPE html>\n<html>\n<head>\n<title>main</title>\n</head>\n<body>\n<svg class=\"typst-doc\" ...
-
 
 # Or return content as an array of bytes
 pdf_bytes = Typst("readme.typ").compile(:pdf).bytes

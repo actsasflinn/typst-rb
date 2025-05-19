@@ -7,11 +7,11 @@ require_relative "typst/typst"
 require_relative "base"
 require_relative "query"
 require_relative "document"
-require_relative "pdf"
-require_relative "svg"
-require_relative "png"
-require_relative "html"
-require_relative "html_experimental"
+require_relative "formats/pdf"
+require_relative "formats/svg"
+require_relative "formats/png"
+require_relative "formats/html"
+require_relative "formats/html_experimental"
 
 def Typst(*options)
   Typst::Base.new(*options)
