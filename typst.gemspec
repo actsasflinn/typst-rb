@@ -3,7 +3,7 @@ $LOAD_PATH.unshift lib unless $LOAD_PATH.include?(lib)
 
 Gem::Specification.new do |s|
   s.name = "typst"
-  s.version = "0.13.2"
+  s.version = "0.13.3"
   s.authors = "Flinn"
   s.email = "flinn@actsasflinn.com"
   s.files = Dir["{lib}/**/*.{rb,ttf,otf}", "ext/**/*.{rs,toml,lock,rb,ttf}"] + %w[README.md README.typ Cargo.toml Rakefile]
