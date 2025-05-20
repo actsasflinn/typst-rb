@@ -66,7 +66,11 @@ module Typst
         options[:root] = tmp_dir
         options[:font_paths] = [relative_font_path]
 
-        new(**options)
+        if options[:format]
+          Typst::formats[options[:format]].new(**options)
+        else
+          new(**options)
+        end
       end
     end
 
