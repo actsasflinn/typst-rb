@@ -121,7 +121,7 @@ module Typst
     end
 
     def with_font_paths(font_paths)
-      self.options[:font_paths] = self.options[font_paths] + font_paths
+      self.options[:font_paths] = self.options[:font_paths] + font_paths
       self
     end
 
