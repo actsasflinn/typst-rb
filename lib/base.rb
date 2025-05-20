@@ -16,8 +16,8 @@ module Typst
 
       if options.has_key?(:file)
         raise "Can't find file" unless File.exist?(options[:file])
-      elsif options.has_key?(:template)
-        raise "Empty template" if options[:template].to_s.empty?
+      elsif options.has_key?(:body)
+        raise "Empty body" if options[:body].to_s.empty?
       elsif options.has_key?(:zip)
         raise "Can't find zip" unless File.exist?(options[:zip])
       else
@@ -133,8 +133,8 @@ module Typst
 
       if options.has_key?(:file)
         Typst::formats[format].new(**options).compiled
-      elsif options.has_key?(:template)
-        Typst::formats[format].from_s(options[:template], **options).compiled
+      elsif options.has_key?(:body)
+        Typst::formats[format].from_s(options[:body], **options).compiled
       elsif options.has_key?(:zip)
         Typst::formats[format].from_zip(options[:zip], options[:main_file], **options).compiled
       else

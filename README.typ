@@ -17,16 +17,16 @@ gem install typst
 ```ruby
 require "typst"
 
-# Compile a template file and write the output to a PDF file
+# Compile a typst file and write the output to a PDF file
 Typst("readme.typ").compile(:pdf).write("readme.pdf")
 
-# Use a typst template file `readme.typ`
+# Use a typst file `readme.typ`
 t = Typst("readme.typ")
 
-# Use a typst template string
-t = Typst(template: %{hello world})
+# Use a typst string
+t = Typst(body: %{hello world})
 
-# Use a typst template in a zip file
+# Use a typst file in a zip file
 t = Typst(zip: "test/main.typ.zip")
 
 # Compile to PDF
@@ -68,7 +68,7 @@ Typst("readme.typ").compile(:html).pages
 Typst("readme.typ").compile(:png).pages
 # => ["\x89PNG\r\n\x1A\n\x00\x00\x00\rIHDR\x00\x00\x04\xA7\x00\x00\x06\x94\b\ ...
 
-# Pass values into a typst template using Typst sys_inputs
+# Pass values into typst using sys_inputs
 sys_inputs_example = %{
 #let persons = json(bytes(sys.inputs.persons))
 
@@ -78,11 +78,11 @@ sys_inputs_example = %{
 }
 people = [{"name" => "John", "age" => 35}, {"name" => "Xoliswa", "age" => 45}]
 data = { "persons" => people.to_json }
-Typst(template: sys_inputs_example, sys_inputs: data).compile(:pdf).write("sys_inputs_example.pdf")
+Typst(body: sys_inputs_example, sys_inputs: data).compile(:pdf).write("sys_inputs_example.pdf")
 
-# Apply inputs to a template to product multiple PDFs
+# Apply inputs to typst to product multiple PDFs
 
-t = Typst(template: sys_inputs_example)
+t = Typst(body: sys_inputs_example)
 people.each do |person|
   t.with_inputs({ "persons" => [person].to_json }).compile(:pdf).write("#{person['name']}.pdf")
 end
@@ -108,7 +108,7 @@ template = %{
 icon = File.read("icon.svg")
 font_bytes = File.read("Example.ttf")
 
-Typst(template: main, dependencies: { "template.typ" => template, "icon.svg" => icon }, fonts: { "Example.ttf" => font_bytes }).compile(:pdf)
+Typst(body: main, dependencies: { "template.typ" => template, "icon.svg" => icon }, fonts: { "Example.ttf" => font_bytes }).compile(:pdf)
  
 # From a zip with a named main typst file
 Typst(zip: "test/main.typ.zip", main_file: "hello.typ").compile(:pdf)
