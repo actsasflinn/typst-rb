@@ -6,4 +6,6 @@ module Typst
     end
   end
   class SvgDocument < Document; end
+
+  register_format(svg: Svg)
 end

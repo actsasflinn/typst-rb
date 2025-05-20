@@ -127,17 +127,16 @@ module Typst
     end
 
     def compile(format, **options)
-      formats = { pdf: Pdf, svg: Svg, png: Png, html: Html, html_experimental: HtmlExperimental }
-      raise "Invalid format" if formats[format].nil?
+      raise "Invalid format" if Typst::formats[format].nil?
 
       options = self.options.merge(options)
 
       if options.has_key?(:file)
-        formats[format].new(**options).compiled
+        Typst::formats[format].new(**options).compiled
       elsif options.has_key?(:template)
-        formats[format].from_s(options[:template], **options).compiled
+        Typst::formats[format].from_s(options[:template], **options).compiled
       elsif options.has_key?(:zip)
-        formats[format].from_zip(options[:zip], **options).compiled
+        Typst::formats[format].from_zip(options[:zip], options[:main_file], **options).compiled
       else
         raise "No input given"
       end

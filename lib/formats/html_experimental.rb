@@ -6,4 +6,6 @@ module Typst
     end
   end
   class HtmlExperimentalDocument < Document; end
+
+  register_format(html_experimental: HtmlExperimental)
 end

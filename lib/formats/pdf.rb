@@ -6,4 +6,6 @@ module Typst
     end
   end
   class PdfDocument < Document; end
+
+  register_format(pdf: Pdf)
 end

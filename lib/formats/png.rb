@@ -6,4 +6,6 @@ module Typst
     end
   end
   class PngDocument < Document; end
+
+  register_format(png: Png)
 end

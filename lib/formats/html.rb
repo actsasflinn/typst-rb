@@ -30,4 +30,6 @@ module Typst
     end
     alias_method :document, :markup
   end
+
+  register_format(html: Html)
 end

@@ -1,3 +1,20 @@
+def Typst(*options)
+  Typst::Base.new(*options)
+end
+
+module Typst
+  @@formats = {}
+
+  def self.register_format(**format)
+    @@formats.merge!(format)
+  end
+  
+  def self.formats
+    @@formats
+  end
+end
+
+
 require "cgi"
 require "pathname"
 require "tmpdir"
@@ -12,7 +29,3 @@ require_relative "formats/svg"
 require_relative "formats/png"
 require_relative "formats/html"
 require_relative "formats/html_experimental"
-
-def Typst(*options)
-  Typst::Base.new(*options)
-end
