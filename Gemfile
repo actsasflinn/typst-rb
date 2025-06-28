@@ -4,7 +4,14 @@ gemspec
 
 gem "rake"
 gem "rake-compiler", "~> 1.2"
-gem "rb_sys", ">= 0.9.83"
-gem 'test-unit'
+gem "rake-compiler-dock", "~> 1.9"
+gem "rb_sys", "~> 0.9.116"
 gem 'rubyzip', "~> 2.4"
-gem "hexapdf"
+
+group :development do
+  gem "hexapdf"
+end
+
+group :test do
+  gem 'test-unit'
+end
