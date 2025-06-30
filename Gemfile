@@ -9,9 +9,9 @@ gem "rb_sys", "~> 0.9.116"
 gem 'rubyzip', "~> 2.4"
 
 group :development do
-  gem "hexapdf"
+  gem "hexapdf", "~> 1.3"
 end
 
 group :test do
-  gem 'test-unit'
+  gem 'test-unit', "~> 3.6"
 end

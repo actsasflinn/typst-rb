@@ -3,10 +3,10 @@ $LOAD_PATH.unshift lib unless $LOAD_PATH.include?(lib)
 
 Gem::Specification.new do |s|
   s.name = "typst"
-  s.version = "0.13.4"
+  s.version = "0.13.5"
   s.authors = "Flinn"
   s.email = "flinn@actsasflinn.com"
-  s.files = Dir["{lib}/**/*.{rb,ttf,otf}", "ext/**/*.{rs,toml,lock,rb,ttf}"] + %w[README.md README.typ Cargo.toml Rakefile]
+  s.files = Dir["{lib}/**/*.{rb,ttf,otf,so,bundle}", "ext/**/*.{rs,toml,lock,rb,ttf}"] + %w[README.md README.typ Cargo.toml Rakefile]
   s.homepage = "https://github.com/actsasflinn/typst-rb"
   s.require_paths = ["lib"]
   s.extensions = %w[ext/typst/extconf.rb]
@@ -16,5 +16,6 @@ Gem::Specification.new do |s|
 
   s.add_dependency "rb_sys", ">= 0.9.116"
   s.add_dependency "rubyzip", "~> 2.4"
-  s.add_development_dependency "hexapdf"
+  s.add_development_dependency "hexapdf", "~> 1.3"
+  s.add_development_dependency "test-unit", "~> 3.6"
 end

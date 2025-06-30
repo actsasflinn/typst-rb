@@ -18,7 +18,7 @@ spec = Bundler.load_gemspec("typst.gemspec")
 
 Gem::PackageTask.new(spec).define
 
-RakeCompilerDock.set_ruby_cc_version("~> 3.1")
+RakeCompilerDock.set_ruby_cc_version("~> 3.0")
 
 Rake::ExtensionTask.new("typst", spec) do |ext|
   ext.lib_dir = "lib/typst"
@@ -31,4 +31,17 @@ Rake::TestTask.new do |t|
   t.libs << "test"
   t.test_files = FileList['test/*_test.rb']
   t.verbose = true
+end
+
+task 'gem:native' do |t|
+  CROSS_PLATFORMS.each do |platform|
+    sh "bundle exec rb-sys-dock --platform #{platform} --build"
+  end
+end
+
+task 'gem:native:push' do |t|
+  CROSS_PLATFORMS.each do |platform|
+    sh "gem signin"
+    sh "gem push pkg/typst-#{spec.version}-#{platform}.gem"
+  end
 end
