@@ -80,7 +80,7 @@ class TypstTest < Test::Unit::TestCase
     }
 
       icon = File.read("#{File.dirname(__FILE__)}/template_with_font_and_icon/monkey.svg")
-      font_bytes = File.read("#{File.dirname(__FILE__)}//fonts/Fasthand/Release/ttf/Fasthand-Regular.ttf")
+      font_bytes = File.read("#{File.dirname(__FILE__)}/fonts/Fasthand/Release/ttf/Fasthand-Regular.ttf")
 
       Typst::Pdf.from_s(main, dependencies: { "template.typ" => template, "icon.svg" => icon }, fonts: { "Fasthand-Regular.ttf" => font_bytes })
       Typst(body: main, dependencies: { "template.typ" => template, "icon.svg" => icon }, fonts: { "Fasthand-Regular.ttf" => font_bytes }).compile(:pdf)
