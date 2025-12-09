@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
   s.required_ruby_version = ">= 3.0.0"
 
   s.add_dependency "rb_sys", ">= 0.9.116"
-  s.add_dependency "rubyzip", "~> 2.4"
+  s.add_dependency "rubyzip", "~> 3.2"
   s.add_development_dependency "hexapdf", "~> 1.3"
   s.add_development_dependency "test-unit", "~> 3.6"
 end
