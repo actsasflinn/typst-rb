@@ -4,9 +4,10 @@ use codespan_reporting::term::{self, termcolor};
 use ecow::{eco_format, EcoString};
 use typst::diag::{Severity, SourceDiagnostic, StrResult, Warned};
 use typst::foundations::Datetime;
-use typst::html::HtmlDocument;
+use typst_html::HtmlDocument;
 use typst::layout::PagedDocument;
-use typst::syntax::{FileId, Source, Span};
+//use typst::syntax::{FileId, Source, Span};
+use typst::syntax::{FileId, Lines, Span};
 use typst::{World, WorldExt};
 
 use crate::world::SystemWorld;
@@ -167,7 +168,7 @@ pub fn format_diagnostics(
         )
         .with_labels(label(world, diagnostic.span).into_iter().collect());
 
-        term::emit(&mut w, &config, world, &diag)?;
+        term::emit_to_write_style(&mut w, &config, world, &diag)?;
 
         // Stacktrace-like helper diagnostics.
         for point in &diagnostic.trace {
@@ -176,7 +177,7 @@ pub fn format_diagnostics(
                 .with_message(message)
                 .with_labels(label(world, point.span).into_iter().collect());
 
-            term::emit(&mut w, &config, world, &help)?;
+            term::emit_to_write_style(&mut w, &config, world, &help)?;
         }
     }
 
@@ -192,7 +193,7 @@ fn label(world: &SystemWorld, span: Span) -> Option<Label<FileId>> {
 impl<'a> codespan_reporting::files::Files<'a> for SystemWorld {
     type FileId = FileId;
     type Name = String;
-    type Source = Source;
+    type Source = Lines<String>;
 
     fn name(&'a self, id: FileId) -> CodespanResult<Self::Name> {
         let vpath = id.vpath();

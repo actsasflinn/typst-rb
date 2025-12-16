@@ -1,18 +1,18 @@
 [package]
 name = "typst"
-version = "0.13.5"
+version = "0.14.2"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-chrono = { version = "0.4.38", default-features = false, features = [
+chrono = { version = "0.4.42", default-features = false, features = [
     "clock",
     "std",
 ] }
-codespan-reporting = "0.11"
-comemo = "0.4"
+codespan-reporting = "0.13"
+comemo = "0.5.0"
 dirs = "5" #
 ecow = "0.2"
 env_logger = "0.10.1" #
@@ -28,21 +28,21 @@ siphasher = "1.0" #
 tar = "0.4" #
 #typst = { git = "https://github.com/typst/typst.git", tag = "v0.13.0" }
 #typst-library = { git = "https://github.com/typst/typst.git", tag = "v0.13.0" }
-serde = { version = "1.0.217", features = ["derive"] }
+serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
-typst = "0.13.1"
-typst-library  = "0.13.1"
-typst-kit = { version = "0.13.1", features = [
+typst = "0.14.2"
+typst-library  = "0.14.2"
+typst-kit = { version = "0.14.2", features = [
     "downloads",
     "embed-fonts",
     "vendor-openssl",
 ] }
-typst-pdf = "0.13.1"
-typst-svg = "0.13.1"
-typst-html = "0.13.1"
-typst-render = "0.13.1"
-typst-eval = "0.13.1"
+typst-pdf = "0.14.2"
+typst-svg = "0.14.2"
+typst-html = "0.14.2"
+typst-render = "0.14.2"
+typst-eval = "0.14.2"
 ureq = { version = "2", default-features = false, features = [
     "gzip",
     "socks-proxy",
@@ -51,4 +51,4 @@ walkdir = "2.4.0"
 
 # enable rb-sys feature to test against Ruby head. This is only needed if you
 # want to work with the unreleased, in-development, next version of Ruby
-rb-sys = { version = "0.9.116", default-features = false, features = ["stable-api-compiled-fallback"] }
+rb-sys = { version = "0.9.119", default-features = false, features = ["stable-api-compiled-fallback"] }

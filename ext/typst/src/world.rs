@@ -3,13 +3,14 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
 use chrono::{DateTime, Datelike, Local};
+//use rustc_hash::FxHashMap;
 use ecow::eco_format;
 use typst::diag::{FileError, FileResult, StrResult};
 use typst::foundations::{Bytes, Datetime, Dict};
-use typst::syntax::{FileId, Source, VirtualPath};
+use typst::syntax::{FileId, Lines, Source, VirtualPath};
 use typst::text::{Font, FontBook};
 use typst::utils::LazyHash;
-use typst::{Features, Library, LibraryBuilder, World};
+use typst::{Features, Library, LibraryExt, World};
 use typst_kit::{
     fonts::{FontSearcher, FontSlot},
     package::PackageStorage,
@@ -129,9 +130,20 @@ impl SystemWorld {
 
     /// Lookup a source file by id.
     #[track_caller]
-    pub fn lookup(&self, id: FileId) -> Source {
-        self.source(id)
-            .expect("file id does not point to any source file")
+    pub fn lookup(&self, id: FileId) -> Lines<String> {
+//        self.source(id)
+//            .expect("file id does not point to any source file")
+        self.slot(id, |slot| {
+            if let Some(source) = slot.source.get() {
+                let source = source.as_ref().expect("file is not valid");
+                source.lines().clone()
+            } else if let Some(bytes) = slot.file.get() {
+                let bytes = bytes.as_ref().expect("file is not valid");
+                Lines::try_from(bytes).expect("file is not valid utf-8")
+            } else {
+                panic!("file id does not point to any source file");
+            }
+        })
     }
 }
 
@@ -193,7 +205,7 @@ impl SystemWorldBuilder {
             input,
             root: self.root,
             main: FileId::new(None, main_path),
-            library: LazyHash::new(LibraryBuilder::default().with_inputs(self.inputs).with_features(self.features).build()),
+            library: LazyHash::new(Library::builder().with_inputs(self.inputs).with_features(self.features).build()),
             book: LazyHash::new(fonts.book),
             fonts: fonts.fonts,
             slots: Mutex::default(),
@@ -298,6 +310,11 @@ impl<T: Clone> SlotCell<T> {
     /// compilation.
     fn reset(&mut self) {
         self.accessed = false;
+    }
+
+    /// Gets the contents of the cell.
+    fn get(&self) -> Option<&FileResult<T>> {
+        self.data.as_ref()
     }
 
     /// Gets the contents of the cell or initialize them.

@@ -40,8 +40,8 @@ task 'gem:native' do |t|
 end
 
 task 'gem:native:push' do |t|
+  sh "gem signin"
   CROSS_PLATFORMS.each do |platform|
-    sh "gem signin"
     sh "gem push pkg/typst-#{spec.version}-#{platform}.gem"
   end
 end
