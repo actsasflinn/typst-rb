@@ -1,4 +1,4 @@
-# .github/workflows/gem-release.yml
+# .github/workflows/release.yml
 name: Gem Release
 
 on:
@@ -7,19 +7,7 @@ on:
       - "v*"
 
 jobs:
-  fetch-data:
-    runs-on: ubuntu-latest
-    outputs:
-      platforms: ${{ steps.fetch.outputs.supported-ruby-platforms }}
-    steps:
-      - id: fetch
-        uses: oxidize-rb/actions/fetch-ci-data@v1
-        with:
-          supported-ruby-platforms: |
-            exclude: [x86-linux, x86-darwin, arm-linux]
-
   test:
-    needs: fetch-data
     strategy:
       fail-fast: false
       matrix:
@@ -32,18 +20,16 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
-      - run: git submodule init
-      - run: git submodule update
       - run: bundle exec rake compile
       - run: bundle exec rake test
 
   cross-compile:
-    needs: [fetch-data, test]
+    needs: [test]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        platform: ${{ fromJSON(needs.fetch-data.outputs.platforms) }}
+        platform: ["x86_64-linux", "x86_64-linux-musl", "aarch64-linux", " aarch64-linux-musl", "x86_64-darwin", "arm64-darwin", "x64-mingw-ucrt"]
     steps:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
@@ -61,10 +47,6 @@ jobs:
     needs: cross-compile
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "3.1"
       - uses: actions/download-artifact@v3
         with:
           path: artifacts
@@ -73,10 +55,11 @@ jobs:
           mkdir -p pkg
           find artifacts -name "*.gem" -exec mv {} pkg/ \;
       - name: Publish to RubyGems
-        run: |
-          mkdir -p ~/.gem
-          echo -e "---\n:rubygems_api_key: ${RUBYGEMS_API_KEY}" > ~/.gem/credentials
-          chmod 0600 ~/.gem/credentials
-          gem push pkg/*.gem
         env:
           RUBYGEMS_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
+        run: |
+          mkdir -p ~/.gem
+          echo "---
+          :rubygems_api_key: ${RUBYGEMS_API_KEY}" > ~/.gem/credentials
+          chmod 0600 ~/.gem/credentials
+          gem push pkg/*.gem

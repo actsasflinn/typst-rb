@@ -4,6 +4,7 @@ require "rake/testtask"
 
 CROSS_PLATFORMS = %w[
   aarch64-linux
+  aarch64-linux-musl
   arm64-darwin
   x64-mingw-ucrt
   x86_64-darwin
