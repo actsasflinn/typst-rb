@@ -1,9 +1,6 @@
 require "bundler/gem_tasks"
-require "rake/extensiontask"
+require "rb_sys/extensiontask"
 require "rake/testtask"
-require 'rake_compiler_dock'
-require "rubygems/package_task"
-require "bundler"
 
 CROSS_PLATFORMS = %w[
   aarch64-linux
@@ -18,9 +15,7 @@ spec = Bundler.load_gemspec("typst.gemspec")
 
 Gem::PackageTask.new(spec).define
 
-RakeCompilerDock.set_ruby_cc_version("~> 3.0")
-
-Rake::ExtensionTask.new("typst", spec) do |ext|
+RbSys::ExtensionTask.new("typst", spec) do |ext|
   ext.lib_dir = "lib/typst"
   ext.source_pattern = "*.{rs,toml}"
   ext.cross_compile = true

@@ -49,4 +49,4 @@ walkdir = "2.4.0"
 
 # enable rb-sys feature to test against Ruby head. This is only needed if you
 # want to work with the unreleased, in-development, next version of Ruby
-rb-sys = { version = "0.9.119", default-features = false, features = ["stable-api-compiled-fallback"] }
+rb-sys = { version = "0.9.123", default-features = false, features = ["stable-api-compiled-fallback"] }
