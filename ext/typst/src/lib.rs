@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
-use magnus::{define_module, function, exception, Error }; //, IntoValue};
-use magnus::{prelude::*};
+use magnus::{function, prelude::*, Error, Ruby};
 
 use std::collections::HashMap;
 use query::{query as typst_query, QueryCommand, SerializationFormat};
@@ -15,6 +14,7 @@ mod query;
 mod world;
 
 fn to_html(
+    ruby: &Ruby,
     input: PathBuf,
     root: Option<PathBuf>,
     font_paths: Vec<PathBuf>,
@@ -23,11 +23,11 @@ fn to_html(
     sys_inputs: HashMap<String, String>,
 ) -> Result<Vec<Vec<u8>>, Error> {
     let input = input.canonicalize()
-        .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?;
+        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
 
     let root = if let Some(root) = root {
         root.canonicalize()
-            .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?
+            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
     } else if let Some(dir) = input.parent() {
         dir.into()
     } else {
@@ -35,12 +35,12 @@ fn to_html(
     };
 
     let resource_path = resource_path.canonicalize()
-        .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?;
+        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
 
     let mut default_fonts = Vec::new();
     for entry in walkdir::WalkDir::new(resource_path.join("fonts")) {
         let path = entry
-            .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?
+            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
             .into_path();
         let Some(extension) = path.extension() else {
             continue;
@@ -72,16 +72,17 @@ fn to_html(
         .font_paths(font_paths)
         .ignore_system_fonts(ignore_system_fonts)
         .build()
-        .map_err(|msg| magnus::Error::new(exception::arg_error(), msg.to_string()))?;
+        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
     let bytes = world
         .compile(Some("html"), None, &Vec::new())
-        .map_err(|msg| magnus::Error::new(exception::arg_error(), msg.to_string()))?;
+        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
     Ok(bytes)
 }
 
 fn to_svg(
+    ruby: &Ruby,
     input: PathBuf,
     root: Option<PathBuf>,
     font_paths: Vec<PathBuf>,
@@ -90,11 +91,11 @@ fn to_svg(
     sys_inputs: HashMap<String, String>,
 ) -> Result<Vec<Vec<u8>>, Error> {
     let input = input.canonicalize()
-        .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?;
+        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
 
     let root = if let Some(root) = root {
         root.canonicalize()
-            .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?
+            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
     } else if let Some(dir) = input.parent() {
         dir.into()
     } else {
@@ -102,12 +103,12 @@ fn to_svg(
     };
 
     let resource_path = resource_path.canonicalize()
-        .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?;
+        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
 
     let mut default_fonts = Vec::new();
     for entry in walkdir::WalkDir::new(resource_path.join("fonts")) {
         let path = entry
-            .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?
+            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
             .into_path();
         let Some(extension) = path.extension() else {
             continue;
@@ -126,16 +127,17 @@ fn to_svg(
         .font_paths(font_paths)
         .ignore_system_fonts(ignore_system_fonts)
         .build()
-        .map_err(|msg| magnus::Error::new(exception::arg_error(), msg.to_string()))?;
+        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
     let svg_bytes = world
         .compile(Some("svg"), None, &Vec::new())
-        .map_err(|msg| magnus::Error::new(exception::arg_error(), msg.to_string()))?;
+        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
     Ok(svg_bytes)
 }
 
 fn to_png(
+    ruby: &Ruby,
     input: PathBuf,
     root: Option<PathBuf>,
     font_paths: Vec<PathBuf>,
@@ -144,11 +146,11 @@ fn to_png(
     sys_inputs: HashMap<String, String>,
 ) -> Result<Vec<Vec<u8>>, Error> {
     let input = input.canonicalize()
-        .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?;
+        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
 
     let root = if let Some(root) = root {
         root.canonicalize()
-            .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?
+            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
     } else if let Some(dir) = input.parent() {
         dir.into()
     } else {
@@ -156,12 +158,12 @@ fn to_png(
     };
 
     let resource_path = resource_path.canonicalize()
-        .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?;
+        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
 
     let mut default_fonts = Vec::new();
     for entry in walkdir::WalkDir::new(resource_path.join("fonts")) {
         let path = entry
-            .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?
+            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
             .into_path();
         let Some(extension) = path.extension() else {
             continue;
@@ -180,16 +182,17 @@ fn to_png(
         .font_paths(font_paths)
         .ignore_system_fonts(ignore_system_fonts)
         .build()
-        .map_err(|msg| magnus::Error::new(exception::arg_error(), msg.to_string()))?;
+        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
     let bytes = world
         .compile(Some("png"), None, &Vec::new())
-        .map_err(|msg| magnus::Error::new(exception::arg_error(), msg.to_string()))?;
+        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
     Ok(bytes)
 }
 
 fn to_pdf(
+    ruby: &Ruby,
     input: PathBuf,
     root: Option<PathBuf>,
     font_paths: Vec<PathBuf>,
@@ -198,11 +201,11 @@ fn to_pdf(
     sys_inputs: HashMap<String, String>,
 ) -> Result<Vec<Vec<u8>>, Error> {
     let input = input.canonicalize()
-        .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?;
+        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
 
     let root = if let Some(root) = root {
         root.canonicalize()
-            .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?
+            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
     } else if let Some(dir) = input.parent() {
         dir.into()
     } else {
@@ -210,12 +213,12 @@ fn to_pdf(
     };
 
     let resource_path = resource_path.canonicalize()
-        .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?;
+        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
 
     let mut default_fonts = Vec::new();
     for entry in walkdir::WalkDir::new(resource_path.join("fonts")) {
         let path = entry
-            .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?
+            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
             .into_path();
         let Some(extension) = path.extension() else {
             continue;
@@ -234,16 +237,17 @@ fn to_pdf(
         .font_paths(font_paths)
         .ignore_system_fonts(ignore_system_fonts)
         .build()
-        .map_err(|msg| magnus::Error::new(exception::arg_error(), msg.to_string()))?;
+        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
     let pdf_bytes = world
         .compile(Some("pdf"), None, &Vec::new())
-        .map_err(|msg| magnus::Error::new(exception::arg_error(), msg.to_string()))?;
+        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
     Ok(pdf_bytes)
 }
 
 fn query(
+    ruby: &Ruby,
     selector: String,
     field: Option<String>,
     one: bool,
@@ -258,15 +262,15 @@ fn query(
     let format = match format.unwrap().to_ascii_lowercase().as_str() {
         "json" => SerializationFormat::Json,
         "yaml" => SerializationFormat::Yaml,
-        _ => return Err(magnus::Error::new(exception::arg_error(), "unsupported serialization format"))?,
+        _ => return Err(magnus::Error::new(ruby.exception_arg_error(), "unsupported serialization format"))?,
     };
 
     let input = input.canonicalize()
-        .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?;
+        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
 
     let root = if let Some(root) = root {
         root.canonicalize()
-            .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?
+            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
     } else if let Some(dir) = input.parent() {
         dir.into()
     } else {
@@ -274,12 +278,12 @@ fn query(
     };
 
     let resource_path = resource_path.canonicalize()
-        .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?;
+        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
 
     let mut default_fonts = Vec::new();
     for entry in walkdir::WalkDir::new(resource_path.join("fonts")) {
         let path = entry
-            .map_err(|err| magnus::Error::new(exception::arg_error(), err.to_string()))?
+            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
             .into_path();
         let Some(extension) = path.extension() else {
             continue;
@@ -298,7 +302,7 @@ fn query(
     .font_paths(font_paths)
     .ignore_system_fonts(ignore_system_fonts)
     .build()
-    .map_err(|msg| magnus::Error::new(exception::arg_error(), msg.to_string()))?;
+    .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
     let result = typst_query(
         &mut world,
@@ -312,15 +316,15 @@ fn query(
 
     match result {
         Ok(data) => Ok(data),
-        Err(msg) => Err(magnus::Error::new(exception::arg_error(), msg.to_string())),
+        Err(msg) => Err(magnus::Error::new(ruby.exception_arg_error(), msg.to_string())),
     }
 }
 
 #[magnus::init]
-fn init() -> Result<(), Error> {
+fn init(ruby: &Ruby) -> Result<(), Error> {
     env_logger::init();
 
-    let module = define_module("Typst")?;
+    let module = ruby.define_module("Typst")?;
     module.define_singleton_method("_to_pdf", function!(to_pdf, 6))?;
     module.define_singleton_method("_to_svg", function!(to_svg, 6))?;
     module.define_singleton_method("_to_png", function!(to_png, 6))?;

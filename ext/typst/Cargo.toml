@@ -21,13 +21,11 @@ filetime = "0.2.22" #
 flate2 = "1" #
 fontdb = "0.15.0" #
 log = "0.4.20" #
-magnus = { version = "0.7.1" }
+magnus = { version = "0.8.2" }
 pathdiff = "0.2"
 same-file = "1" #
 siphasher = "1.0" #
 tar = "0.4" #
-#typst = { git = "https://github.com/typst/typst.git", tag = "v0.13.0" }
-#typst-library = { git = "https://github.com/typst/typst.git", tag = "v0.13.0" }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
