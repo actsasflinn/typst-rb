@@ -22,7 +22,7 @@ class TypstTest < Test::Unit::TestCase
 
   def test_pdf_without_font
     assert {
-      !Typst::Pdf.new("template_with_font_and_icon/main.typ", root: "#{File.dirname(__FILE__)}/template_with_font_and_icon").document.include?("Fasthand")
+      !Typst::Pdf.new("template_with_font_and_icon/main.typ", root: "#{File.dirname(__FILE__)}/template_with_font_and_icon").compiled.document.include?("Fasthand")
       !Typst("template_with_font_and_icon/main.typ", root: "#{File.dirname(__FILE__)}/template_with_font_and_icon").compile(:pdf).document.include?("Fasthand")
       !Typst("template_with_font_and_icon/main.typ").with_root("#{File.dirname(__FILE__)}/template_with_font_and_icon").compile(:pdf).document.include?("Fasthand")
     }
@@ -30,7 +30,7 @@ class TypstTest < Test::Unit::TestCase
 
   def test_pdf_font
     assert {
-      Typst::Pdf.new("template_with_font_and_icon/main.typ", root: "#{File.dirname(__FILE__)}/template_with_font_and_icon", font_paths: ["fonts/Fasthand/Release/ttf"]).document.include?("Fasthand")
+      Typst::Pdf.new("template_with_font_and_icon/main.typ", root: "#{File.dirname(__FILE__)}/template_with_font_and_icon", font_paths: ["fonts/Fasthand/Release/ttf"]).compiled.document.include?("Fasthand")
       Typst("template_with_font_and_icon/main.typ", root: "#{File.dirname(__FILE__)}/template_with_font_and_icon", font_paths: ["fonts/Fasthand/Release/ttf"]).compile(:pdf).document.include?("Fasthand")
       Typst("template_with_font_and_icon/main.typ").with_root("#{File.dirname(__FILE__)}/template_with_font_and_icon").with_font_paths(["fonts/Fasthand/Release/ttf"]).compile(:pdf).document.include?("Fasthand")
     }
@@ -146,7 +146,7 @@ class TypstTest < Test::Unit::TestCase
       }
       t = Typst::Pdf.from_s(sys_inputs_example, sys_inputs: { "persons" => [{"name": "John", "age": 35}, {"name": "Xoliswa", "age": 45}].to_json })
 
-      reader = HexaPDF::Document.new(io: StringIO.open(t.document))
+      reader = HexaPDF::Document.new(io: StringIO.open(t.compiled.document))
       processor = GetTextProcessor.new
       reader.pages.each{ |page| page.process_contents(processor) }
       processor.string == "John is 35 years old.\nXoliswa is 45 years old.\n"

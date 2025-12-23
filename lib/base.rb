@@ -145,25 +145,5 @@ module Typst
         raise "No input given"
       end
     end
-
-    def write(output)
-      STDERR.puts "DEPRECATION WARNING: this method will go away in a future version"
-      compiled.write(output)
-    end
-
-    def document
-      STDERR.puts "DEPRECATION WARNING: this method will go away in a future version"
-      compiled.document
-    end
-
-    def bytes
-      STDERR.puts "DEPRECATION WARNING: this method will go away in a future version"
-      compiled.bytes
-    end
-
-    def pages
-      STDERR.puts "DEPRECATION WARNING: this method will go away in a future version"
-      compiled.pages
-    end
   end
 end

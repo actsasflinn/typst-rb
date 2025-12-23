@@ -14,7 +14,6 @@ module Typst
   end
 end
 
-
 require "cgi"
 require "pathname"
 require "tmpdir"
@@ -24,7 +23,7 @@ begin
   # native precompiled gems package shared libraries in <gem_dir>/lib/typst/<ruby_version>
   RUBY_VERSION =~ /(\d+\.\d+)/
   require_relative "typst/#{Regexp.last_match(1)}/typst"
-rescue LoadError => e
+rescue LoadError
   require_relative "typst/typst"
 end
 
