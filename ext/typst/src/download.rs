@@ -14,6 +14,6 @@ impl<T: Display> Progress for SlientDownload<T> {
 
 /// Returns a new downloader.
 pub fn downloader() -> Downloader {
-    let user_agent = concat!("typst-py/", env!("CARGO_PKG_VERSION"));
+    let user_agent = concat!("typst-rb/", env!("CARGO_PKG_VERSION"));
     Downloader::new(user_agent)
 }

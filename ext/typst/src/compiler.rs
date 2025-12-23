@@ -6,7 +6,6 @@ use typst::diag::{Severity, SourceDiagnostic, StrResult, Warned};
 use typst::foundations::Datetime;
 use typst_html::HtmlDocument;
 use typst::layout::PagedDocument;
-//use typst::syntax::{FileId, Source, Span};
 use typst::syntax::{FileId, Lines, Span};
 use typst::{World, WorldExt};
 

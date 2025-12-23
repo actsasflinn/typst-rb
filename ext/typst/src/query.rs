@@ -8,7 +8,7 @@ use typst::layout::PagedDocument;
 use typst::syntax::Span;
 use typst::syntax::SyntaxMode;
 use typst::World;
-use typst_eval::eval_string; //{eval_string, EvalMode};
+use typst_eval::eval_string;
 
 use crate::world::SystemWorld;
 

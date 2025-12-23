@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
 use chrono::{DateTime, Datelike, Local};
-//use rustc_hash::FxHashMap;
 use ecow::eco_format;
 use typst::diag::{FileError, FileResult, StrResult};
 use typst::foundations::{Bytes, Datetime, Dict};
