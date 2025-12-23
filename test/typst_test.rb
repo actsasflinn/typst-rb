@@ -45,8 +45,8 @@ class TypstTest < Test::Unit::TestCase
 
   def test_html
     assert {
-      Typst::Html.new("test.typ")
-      Typst("test.typ").compile(:html)
+      Typst::HtmlExperimental.new("test.typ")
+      Typst("test.typ").compile(:html_experimental)
     }
   end
 
