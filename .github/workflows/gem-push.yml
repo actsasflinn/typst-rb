@@ -1,5 +1,5 @@
-# .github/workflows/release.yml
-name: Gem Release
+# .github/workflows/gem-push.yml
+name: Gem Push
 
 on:
   push:
@@ -20,6 +20,8 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
+      - run: git submodule init
+      - run: git submodule update
       - run: bundle exec rake compile
       - run: bundle exec rake test
 
