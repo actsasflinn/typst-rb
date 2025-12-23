@@ -5,7 +5,9 @@ module Typst
       @compiled = PdfDocument.new(Typst::_to_pdf(*self.typst_args))
     end
   end
-  class PdfDocument < Document; end
+  class PdfDocument < Document
+    alias_method :write, :write_one
+  end
 
   register_format(pdf: Pdf)
 end

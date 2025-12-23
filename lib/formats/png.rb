@@ -5,7 +5,9 @@ module Typst
       @compiled = PngDocument.new(Typst::_to_png(*self.typst_args))
     end
   end
-  class PngDocument < Document; end
+  class PngDocument < Document
+    alias_method :write, :write_some
+  end
 
   register_format(png: Png)
 end

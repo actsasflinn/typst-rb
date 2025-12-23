@@ -5,7 +5,9 @@ module Typst
       @compiled = SvgDocument.new(Typst::_to_svg(*self.typst_args))
     end
   end
-  class SvgDocument < Document; end
+  class SvgDocument < Document
+    alias_method :write, :write_some
+  end
 
   register_format(svg: Svg)
 end

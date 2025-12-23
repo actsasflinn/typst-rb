@@ -5,7 +5,9 @@ module Typst
       @compiled = HtmlExperimentalDocument.new(Typst::_to_html(*self.typst_args))
     end
   end
-  class HtmlExperimentalDocument < Document; end
+  class HtmlExperimentalDocument < Document
+    alias_method :write, :write_one
+  end
 
   register_format(html_experimental: HtmlExperimental)
 end

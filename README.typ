@@ -30,16 +30,16 @@ t = Typst(body: %{hello world})
 t = Typst(zip: "test/main.typ.zip")
 
 # Compile to PDF
-f = t.compile(:pdf)
+doc = t.compile(:pdf)
 
 # Compile to SVG
-f = t.compile(:svg)
+doc = t.compile(:svg)
 
 # Compile to PNG
-f = t.compile(:png)
+doc = t.compile(:png)
 
 # Compile to HTML (using Typst expirmental HTML)
-f = t.compile(:html_experimental)
+doc = t.compile(:html_experimental)
 
 # Or return content as an array of bytes
 pdf_bytes = Typst("readme.typ").compile(:pdf).bytes
@@ -47,7 +47,7 @@ pdf_bytes = Typst("readme.typ").compile(:pdf).bytes
 
 # Write the output to a file
 # Note: for multi-page documents using formats other than PDF and HTML, pages write to multiple files, e.g. `readme_0.png`, `readme_1.png`
-f.write("filename.pdf")
+doc.write("filename.pdf")
 
 # Return PDF, SVG, PNG or HTML content as an array of pages
 Typst("readme.typ").compile(:pdf).pages
