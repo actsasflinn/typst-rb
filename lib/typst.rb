@@ -12,6 +12,10 @@ module Typst
   def self.formats
     @@formats
   end
+
+  def self.clear_cache(max_age: 0)
+    Typst::_clear_cache(max_age)
+  end
 end
 
 require "cgi"

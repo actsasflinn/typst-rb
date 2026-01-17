@@ -320,6 +320,10 @@ fn query(
     }
 }
 
+fn clear_cache(_ruby: &Ruby, max_age: usize) {
+    comemo::evict(max_age);
+}
+
 #[magnus::init]
 fn init(ruby: &Ruby) -> Result<(), Error> {
     env_logger::init();
@@ -330,5 +334,6 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     module.define_singleton_method("_to_png", function!(to_png, 6))?;
     module.define_singleton_method("_to_html", function!(to_html, 6))?;
     module.define_singleton_method("_query", function!(query, 10))?;
+    module.define_singleton_method("_clear_cache", function!(clear_cache, 1))?;
     Ok(())
 }

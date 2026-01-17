@@ -159,4 +159,16 @@ class TypstTest < Test::Unit::TestCase
       processor2.string == "John is 35 years old.\nXoliswa is 45 years old.\n"
     }
   end
+
+  # Compilation succeeds after clearing the cache
+  def test_clear_cache
+    assert {
+      Typst.clear_cache(max_age: 0)
+      Typst::Pdf.new("test.typ")
+      Typst("test.typ").compile(:pdf)
+      Typst.clear_cache(max_age: 0)
+      Typst::Pdf.new("test.typ")
+      Typst("test.typ").compile(:pdf)
+    }
+  end
 end
