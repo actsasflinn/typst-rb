@@ -121,7 +121,7 @@ Typst.clear_cache(max_age)
 ```
 
 ## Contributors & Acknowledgements
-typst-rb is based on [typst-py](https://github.com/messense/typst-py) by [messense](https://github.com/messense)
+typst-rb is based on [typst-py](https://github.com/messense/typst-py) by [messense](https://github.com/messense)\
 clear_cache was contributed by [NRicciVestmark](https://github.com/NRicciVestmark)
 
 ## License
