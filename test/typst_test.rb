@@ -163,12 +163,19 @@ class TypstTest < Test::Unit::TestCase
   # Compilation succeeds after clearing the cache
   def test_clear_cache
     assert {
-      Typst.clear_cache(max_age: 0)
+      require "os"
+
+      Typst.clear_cache(10)
       Typst::Pdf.new("test.typ")
       Typst("test.typ").compile(:pdf)
-      Typst.clear_cache(max_age: 0)
+      Typst.clear_cache(0)
       Typst::Pdf.new("test.typ")
       Typst("test.typ").compile(:pdf)
+
+      bytes = OS.rss_bytes
+      Typst.clear_cache
+      cleared_bytes = OS.rss_bytes
+      bytes > cleared_bytes
     }
   end
 end

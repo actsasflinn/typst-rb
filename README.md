@@ -114,10 +114,15 @@ Typst::Query.new("heading", "readme.typ", format: "json").result(raw: true)
 Typst::Query.new("heading", "readme.typ", format: "yaml").result(raw: true)
 # => "- func: heading\n  level: 1\n  depth: 1\n  offset: 0\n  numbering: ..."
 
+# clear the compilation cache
+# Evict all entries whose age is larger than or equal to `max_age`
+max_age = 10
+Typst.clear_cache(max_age)
 ```
 
 ## Contributors & Acknowledgements
 typst-rb is based on [typst-py](https://github.com/messense/typst-py) by [messense](https://github.com/messense)
+clear_cache was contributed by [NRicciVestmark](https://github.com/NRicciVestmark)
 
 ## License
 
