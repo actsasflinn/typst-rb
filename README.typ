@@ -120,7 +120,7 @@ Typst::Query.new("heading", "readme.typ", format: "yaml").result(raw: true)
 # clear the compilation cache
 # Evict all entries whose age is larger than or equal to `max_age`
 max_age = 10
-Typst.clear_cache(max_age)
+Typst::clear_cache(max_age)
 ```
 
 == Contributors & Acknowledgements

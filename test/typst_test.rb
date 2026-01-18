@@ -165,15 +165,15 @@ class TypstTest < Test::Unit::TestCase
     assert {
       require "os"
 
-      Typst.clear_cache(10)
+      Typst::clear_cache(10)
       Typst::Pdf.new("test.typ")
       Typst("test.typ").compile(:pdf)
-      Typst.clear_cache(0)
+      Typst::clear_cache(0)
       Typst::Pdf.new("test.typ")
       Typst("test.typ").compile(:pdf)
 
       bytes = OS.rss_bytes
-      Typst.clear_cache
+      Typst::clear_cache
       cleared_bytes = OS.rss_bytes
       bytes > cleared_bytes
     }
