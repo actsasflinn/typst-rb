@@ -77,7 +77,7 @@ module Typst
   end
 end
 
-require "cgi"
+require "cgi/escape"
 require "pathname"
 require "tmpdir"
 require "zip/filesystem"
