@@ -1,5 +1,7 @@
 #set text(12pt, font: "Fasthand")
 
+= Test
+
 #emph[Hello] \
 #emoji.face
 #"hello".len()

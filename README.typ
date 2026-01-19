@@ -104,18 +104,26 @@ Typst(body: main, dependencies: { "template.typ" => template, "icon.svg" => icon
 # From a zip with a named main typst file
 Typst(zip: "test/main.typ.zip", main_file: "hello.typ").compile(:pdf)
 
-Typst::Query.new("heading", "readme.typ").result
+Typst("readme.typ").query("heading").result
 # => 
 # [{"func" => "heading",
 #   "level" => 1,
 #   "depth" => 1,
 # ...
 
-Typst::Query.new("heading", "readme.typ", format: "json").result(raw: true)
+Typst("readme.typ").query("heading", format: "json").result(raw: true)
 # => "[\n  {\n    \"func\": \"heading\",\n    \"level\": 1,\n    \"depth\": ..."
 
-Typst::Query.new("heading", "readme.typ", format: "yaml").result(raw: true)
+Typst("readme.typ").query("heading", format: "yaml").result(raw: true)
 # => "- func: heading\n  level: 1\n  depth: 1\n  offset: 0\n  numbering: ..."
+
+# Query results as JSON string
+Typst("test/test.typ").query("heading").to_s
+=> "[\n  {\n    \"func\": \"heading\",\n    \"level\": 1,\n    \"depth\": 1,\n    \"offset\": 0,\n ...
+
+# Query results as YAML string
+Typst("test/test.typ").query("heading", format: "yaml").to_s
+=> "- func: heading\n  level: 1\n  depth: 1\n  offset: 0\n  numbering: null\n  supplement:\n    ...
 
 # clear the compilation cache
 # Evict all entries whose age is larger than or equal to `max_age`

@@ -34,74 +34,35 @@ module Typst
       options[:dependencies] ||= {}
       options[:fonts] ||= {}
       options[:sys_inputs] ||= {}
+      options[:resource_path] ||= File.dirname(__FILE__)
+      options[:ignore_system_fonts] ||= false
     
       self.options = options
     end
 
     def typst_args
-      [options[:file], options[:root], options[:font_paths], File.dirname(__FILE__), false, options[:sys_inputs].map{ |k,v| [k.to_s,v.to_s] }.to_h]
+      [options[:file], options[:root], options[:font_paths], options[:resource_path], options[:ignore_system_fonts], options[:sys_inputs].map{ |k,v| [k.to_s,v.to_s] }.to_h]
     end
 
     def self.from_s(main_source, **options)
-      dependencies = options[:dependencies] ||= {}
-      fonts = options[:fonts] ||= {}
-
-      Dir.mktmpdir do |tmp_dir|
-        tmp_main_file = Pathname.new(tmp_dir).join("main.typ")
-        File.write(tmp_main_file, main_source)
-
-        dependencies.each do |dep_name, dep_source|
-          tmp_dep_file = Pathname.new(tmp_dir).join(dep_name)
-          File.write(tmp_dep_file, dep_source)
-        end
-
-        relative_font_path = Pathname.new(tmp_dir).join("fonts")
-        fonts.each do |font_name, font_bytes|
-          Pathname.new(relative_font_path).mkpath
-          tmp_font_file = relative_font_path.join(font_name)
-          File.write(tmp_font_file, font_bytes)
-        end
-
-        options[:file] = tmp_main_file
-        options[:root] = tmp_dir
-        options[:font_paths] = [relative_font_path]
-
-        if options[:format]
-          Typst::formats[options[:format]].new(**options)
+      Typst::build_world_from_s(main_source, **options) do |opts|
+        from_options = options.merge(opts)
+        if from_options[:format]
+          Typst::formats[from_options[:format]].new(**from_options)
         else
-          new(**options)
+          new(**from_options)
         end
       end
     end
 
-    def self.from_zip(zip_file_path, main_file = nil, **options)
-      options[:dependencies] ||= {}
-      options[:fonts] ||= {}
-
-      Zip::File.open(zip_file_path) do |zipfile|
-        file_names = zipfile.dir.glob("*").collect{ |f| f.name }
-        case
-          when file_names.include?(main_file) then tmp_main_file = main_file
-          when file_names.include?("main.typ") then tmp_main_file = "main.typ"
-          when file_names.size == 1 then tmp_main_file = file_names.first
-          else raise "no main file found"
+    def self.from_zip(zip_file_path, main_file = "main.typ", **options)
+      Typst::build_world_from_zip(zip_file_path, main_file, **options) do |opts|
+        from_options = options.merge(opts)
+        if from_options[:format]
+          Typst::formats[from_options[:format]].new(**from_options)
+        else
+          new(**from_options)
         end
-        main_source = zipfile.file.read(tmp_main_file)
-        file_names.delete(tmp_main_file)
-        file_names.delete("fonts/")
-
-        file_names.each do |dep_name|
-          options[:dependencies][dep_name] = zipfile.file.read(dep_name)
-        end
-
-        font_file_names = zipfile.dir.glob("fonts/*").collect{ |f| f.name }
-        font_file_names.each do |font_name|
-          options[:fonts][Pathname.new(font_name).basename.to_s] = zipfile.file.read(font_name)
-        end
-
-        options[:main_file] = tmp_main_file
-
-        from_s(main_source, **options)
       end
     end
 
@@ -138,9 +99,32 @@ module Typst
       if options.has_key?(:file)
         Typst::formats[format].new(**options).compiled
       elsif options.has_key?(:body)
-        Typst::formats[format].from_s(options[:body], **options).compiled
+        Typst::build_world_from_s(self.options[:body], **options) do |opts|
+          Typst::formats[format].new(**options.merge(opts)).compiled
+        end
       elsif options.has_key?(:zip)
-        Typst::formats[format].from_zip(options[:zip], options[:main_file], **options).compiled
+        main_file = options[:main_file]
+        Typst::build_world_from_zip(options[:zip], main_file, **options) do |opts|
+          Typst::formats[format].new(**options.merge(opts)).compiled
+        end
+      else
+        raise "No input given"
+      end
+    end
+
+    def query(selector, field: nil, one: false, format: "json")
+      query_options = { field: field, one: one, format: format }
+
+      if self.options.has_key?(:file)
+        Typst::Query.new(selector, self.options[:file], **query_options.merge(self.options.slice(:root, :font_paths, :resource_path, :ignore_system_fonts, :sys_inputs)))
+      elsif self.options.has_key?(:body)
+        Typst::build_world_from_s(self.options[:body], **self.options) do |opts|
+          Typst::Query.new(selector, opts[:file], **query_options.merge(opts.slice(:root, :font_paths, :resource_path, :ignore_system_fonts, :sys_inputs)))
+        end
+      elsif self.options.has_key?(:zip)
+        Typst::build_world_from_zip(self.options[:zip], **self.options) do |opts|
+          Typst::Query.new(selector, opts[:file], **query_options.merge(opts.slice(:root, :font_paths, :resource_path, :ignore_system_fonts, :sys_inputs)))
+        end
       else
         raise "No input given"
       end

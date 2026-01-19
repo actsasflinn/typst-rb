@@ -160,6 +160,15 @@ class TypstTest < Test::Unit::TestCase
     }
   end
 
+  def test_query
+    assert {
+      Typst("test.typ").query("heading").result
+      Typst("test.typ").query("heading", format: "yaml").result
+      Typst(body: %{hello world}).query("heading").result
+      Typst(zip: "main.typ.zip").query("heading").result
+    }
+  end
+
   # Compilation succeeds after clearing the cache
   def test_clear_cache
     assert {
