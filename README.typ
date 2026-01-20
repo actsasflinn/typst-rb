@@ -38,6 +38,9 @@ doc = t.compile(:svg)
 # Compile to PNG
 doc = t.compile(:png)
 
+# Compile to PNG and set PPI
+doc = t.compile(:png, ppi: 72)
+
 # Compile to HTML (using Typst expirmental HTML)
 doc = t.compile(:html_experimental)
 
