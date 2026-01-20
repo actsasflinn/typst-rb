@@ -144,6 +144,7 @@ fn to_png(
     resource_path: PathBuf,
     ignore_system_fonts: bool,
     sys_inputs: HashMap<String, String>,
+    ppi: Option<f32>,
 ) -> Result<Vec<Vec<u8>>, Error> {
     let input = input.canonicalize()
         .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
@@ -185,7 +186,7 @@ fn to_png(
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
     let bytes = world
-        .compile(Some("png"), None, &Vec::new())
+        .compile(Some("png"), ppi, &Vec::new())
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
     Ok(bytes)
@@ -331,7 +332,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     let module = ruby.define_module("Typst")?;
     module.define_singleton_method("_to_pdf", function!(to_pdf, 6))?;
     module.define_singleton_method("_to_svg", function!(to_svg, 6))?;
-    module.define_singleton_method("_to_png", function!(to_png, 6))?;
+    module.define_singleton_method("_to_png", function!(to_png, 7))?;
     module.define_singleton_method("_to_html", function!(to_html, 6))?;
     module.define_singleton_method("_query", function!(query, 10))?;
     module.define_singleton_method("_clear_cache", function!(clear_cache, 1))?;

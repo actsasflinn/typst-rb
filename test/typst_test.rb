@@ -36,6 +36,17 @@ class TypstTest < Test::Unit::TestCase
     }
   end
 
+  def test_png
+    assert {
+      require "pngcheck"
+      png72 = Typst("test.typ").compile(:png, ppi: 72.0)
+      png144 = Typst("test.typ").compile(:png, ppi: 144.0)
+      xy72 = PngCheck.analyze_buffer(png72.pages[0])[1].match(/(\d+)x(\d+),/)
+      xy144 = PngCheck.analyze_buffer(png144.pages[0])[1].match(/(\d+)x(\d+),/)
+      xy144[2].to_i / xy72[2].to_i == 2
+    }
+  end
+
   def test_svg
     assert {
       Typst::Svg.new("test.typ")

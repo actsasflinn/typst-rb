@@ -14,4 +14,5 @@ end
 group :test do
   gem 'test-unit', "~> 3.6"
   gem 'os', "~> 1.1"
+  gem 'pngcheck', "~> 0.3"
 end
