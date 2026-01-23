@@ -44,6 +44,11 @@ module Typst
       [options[:file], options[:root], options[:font_paths], options[:resource_path], options[:ignore_system_fonts], options[:sys_inputs].map{ |k,v| [k.to_s,v.to_s] }.to_h]
     end
 
+    def typst_pdf_args
+      options[:pdf_standards] ||= []
+      [*typst_args, options[:pdf_standards]]
+    end
+
     def typst_png_args
       [*typst_args, options[:ppi]]
     end

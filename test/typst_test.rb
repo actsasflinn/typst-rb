@@ -36,6 +36,17 @@ class TypstTest < Test::Unit::TestCase
     }
   end
 
+  def test_pdf_standard
+    require "hexapdf"
+    pdf = Typst("test.typ").compile(:pdf, pdf_standards: ["2.0"])
+    reader = HexaPDF::Document.new(io: StringIO.open(pdf.document))
+    assert_equal("2.0", reader.version)
+
+    assert_raise(ArgumentError) {
+      Typst("test.typ").compile(:pdf, pdf_standards: ["x"])
+    }
+  end
+
   def test_png
     assert {
       require "pngcheck"

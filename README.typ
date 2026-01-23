@@ -1,4 +1,4 @@
-
+#set document(title: [typst.rb README])
 #show link: underline
 #show link: set text(blue)
 
