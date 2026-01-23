@@ -32,6 +32,9 @@ t = Typst(zip: "test/main.typ.zip")
 # Compile to PDF
 doc = t.compile(:pdf)
 
+# Compile to PDF selecting the typst supported PdfStandard
+doc = t.compile(:pdf, pdf_standards: ["2.0"])
+
 # Compile to SVG
 doc = t.compile(:svg)
 
