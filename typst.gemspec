@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
   s.license = "Apache-2.0"
   s.required_ruby_version = ">= 3.0.0"
 
-  s.add_dependency "rb_sys", "~> 0.9", ">= 0.9.124"
+  s.add_dependency "rb_sys", "~> 0.9", ">= 0.9.124" # Don't forget to keep Cargo.toml in sync
   s.add_dependency "rubyzip", "~> 3.2"
   s.add_development_dependency "hexapdf", "~> 1.5"
   s.add_development_dependency "test-unit", "~> 3.6"
