@@ -16,53 +16,82 @@ require "typst"
 
 # Compile a typst file and write the output to a PDF file
 Typst("readme.typ").compile(:pdf).write("readme.pdf")
+```
 
-# Use a typst file `readme.typ`
+### Use a typst file `readme.typ`
+```ruby
 t = Typst("readme.typ")
+```
 
-# Use a typst string
+### Use a typst string
+```ruby
 t = Typst(body: %{hello world})
+```
 
-# Use a typst file in a zip file
+### Use a typst file in a zip file
+```ruby
 t = Typst(zip: "test/main.typ.zip")
+```
 
-# Compile to PDF
+### Compile to PDF
+```ruby
 doc = t.compile(:pdf)
+```
 
-# Compile to PDF selecting the typst supported PdfStandard
+### Compile to PDF selecting the typst supported PdfStandard
+```ruby
 doc = t.compile(:pdf, pdf_standards: ["2.0"])
+```
 
-# Compile to SVG
+### Compile to SVG
+```ruby
 doc = t.compile(:svg)
+```
 
-# Compile to PNG
+### Compile to PNG
+```ruby
 doc = t.compile(:png)
+```
 
-# Compile to PNG and set PPI
+### Compile to PNG and set PPI
+```ruby
 doc = t.compile(:png, ppi: 72)
+```
 
-# Compile to HTML (using Typst expirmental HTML)
+### Compile to HTML (using Typst expirmental HTML)
+```ruby
 doc = t.compile(:html_experimental)
+```
 
-# Or return content as an array of bytes
+### Or return content as an array of bytes
+```ruby
 pdf_bytes = Typst("readme.typ").compile(:pdf).bytes
 # => [37, 80, 68, 70, 45, 49, 46, 55, 10, 37, 128 ...]
+```
 
-# Write the output to a file
-# Note: for multi-page documents using formats other than PDF and HTML, pages write to multiple files, e.g. `readme_0.png`, `readme_1.png`
+### Write the output to a file
+Note: for multi-page documents using formats other than PDF and HTML, pages write to multiple files, e.g. `readme_0.png`, `readme_1.png`
+```ruby
 doc.write("filename.pdf")
+```
 
-# Return PDF, SVG, PNG or HTML content as an array of pages
+### Return PDF, SVG, PNG or HTML content as an array of pages
+```ruby
 Typst("readme.typ").compile(:pdf).pages
 # => ["%PDF-1.7\n%\x80\x80\x80\x80\n\n1 0 obj\n<<\n  /Type /Pages\n  /Count 3\n  /Kids [160 0 R 162 ...
+
 Typst("readme.typ").compile(:svg).pages
 # => ["<svg class=\"typst-doc\" viewBox=\"0 0 595.2764999999999 841.89105\" ...
+
 Typst("readme.typ").compile(:png).pages
 # => ["\x89PNG\r\n\x1A\n\x00\x00\x00\rIHDR\x00\x00\x04\xA7\x00\x00\x06\x94\b\ ...
+
 Typst("readme.typ").compile(:html_experimental).pages
 # => ["<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\">\n    <meta name=\"viewport\" ...
+```
 
-# Pass values into typst using sys_inputs
+### Pass values into typst using sys_inputs
+```ruby
 sys_inputs_example = %{
 #let persons = json(bytes(sys.inputs.persons))
 
@@ -73,9 +102,10 @@ sys_inputs_example = %{
 people = [{"name" => "John", "age" => 35}, {"name" => "Xoliswa", "age" => 45}]
 data = { "persons" => people.to_json }
 Typst(body: sys_inputs_example, sys_inputs: data).compile(:pdf).write("sys_inputs_example.pdf")
+```
 
-# Apply inputs to typst to product multiple PDFs
-
+### Apply inputs to typst to product multiple PDFs
+```ruby
 t = Typst(body: sys_inputs_example)
 people.each do |person|
   t.with_inputs({ "persons" => [person].to_json }).compile(:pdf).write("#{person['name']}.pdf")
@@ -103,12 +133,16 @@ icon = File.read("icon.svg")
 font_bytes = File.read("Example.ttf")
 
 Typst(body: main, dependencies: { "template.typ" => template, "icon.svg" => icon }, fonts: { "Example.ttf" => font_bytes }).compile(:pdf)
+```
  
-# From a zip with a named main typst file
+### From a zip with a named main typst file
+```ruby
 Typst(zip: "test/main.typ.zip", main_file: "hello.typ").compile(:pdf)
+```
 
-# Use a package from the Typst Universe
-package_example = %q{
+### Use a package from the [Typst Universe](https://typst.app/universe)
+Your package_example.typ file...
+```typst
 #import "@preview/wordometer:0.1.5": word-count, total-words
 #show: word-count
 
@@ -118,9 +152,14 @@ In this document, there are #total-words words all up.
   The number of words in this block is #total.words
   and there are #total.characters letters.
 ])
-}
-Typst(body: package_example).compile(:pdf).write("package_example.pdf")
+```
+...compiles just like anything else
+```ruby
+Typst("package_example.typ").compile(:pdf).write("package_example.pdf")
+```
 
+### Query a typst document
+```ruby
 Typst("readme.typ").query("heading").result
 # => 
 # [{"func" => "heading",
@@ -136,13 +175,15 @@ Typst("readme.typ").query("heading", format: "yaml").result(raw: true)
 
 # Query results as JSON string
 Typst("test/test.typ").query("heading").to_s
-=> "[\n  {\n    \"func\": \"heading\",\n    \"level\": 1,\n    \"depth\": 1,\n    \"offset\": 0,\n ...
+# => "[\n  {\n    \"func\": \"heading\",\n    \"level\": 1,\n    \"depth\": 1,\n    \"offset\": 0,\n ...
 
 # Query results as YAML string
 Typst("test/test.typ").query("heading", format: "yaml").to_s
-=> "- func: heading\n  level: 1\n  depth: 1\n  offset: 0\n  numbering: null\n  supplement:\n    ...
+# => "- func: heading\n  level: 1\n  depth: 1\n  offset: 0\n  numbering: null\n  supplement:\n    ...
+```
 
-# clear the compilation cache
+### clear the compilation cache
+```ruby
 # Evict all entries whose age is larger than or equal to `max_age`
 max_age = 10
 Typst::clear_cache(max_age)
