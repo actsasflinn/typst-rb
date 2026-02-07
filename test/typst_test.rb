@@ -1,6 +1,8 @@
 require "test/unit"
 require_relative "../lib/typst"
 
+$VERBOSE = false
+
 Dir.chdir(Pathname.new(__FILE__).dirname.to_s)
 
 class TypstTest < Test::Unit::TestCase
@@ -48,14 +50,12 @@ class TypstTest < Test::Unit::TestCase
   end
 
   def test_png
-    assert {
-      require "pngcheck"
-      png72 = Typst("test.typ").compile(:png, ppi: 72.0)
-      png144 = Typst("test.typ").compile(:png, ppi: 144.0)
-      xy72 = PngCheck.analyze_buffer(png72.pages[0])[1].match(/(\d+)x(\d+),/)
-      xy144 = PngCheck.analyze_buffer(png144.pages[0])[1].match(/(\d+)x(\d+),/)
-      xy144[2].to_i / xy72[2].to_i == 2
-    }
+    require "pngcheck"
+    png72 = Typst("test.typ").compile(:png, ppi: 72.0)
+    png144 = Typst("test.typ").compile(:png, ppi: 144.0)
+    xy72 = PngCheck.analyze_buffer(png72.pages[0])[1].match(/(\d+)x(\d+),/)
+    xy144 = PngCheck.analyze_buffer(png144.pages[0])[1].match(/(\d+)x(\d+),/)
+    assert_equal(2, xy144[2].to_i / xy72[2].to_i)
   end
 
   def test_svg
@@ -153,33 +153,33 @@ class TypstTest < Test::Unit::TestCase
   end
 
   def test_sys_inputs
-    assert {
-      require "json"
-      require "hexapdf"
-      require "#{File.dirname(__FILE__)}/text_processor.rb"
+    require "json"
+    require "hexapdf"
+    require "#{File.dirname(__FILE__)}/text_processor.rb"
 
-      # Pass values into a typst template using sys_inputs
-      sys_inputs_example = %{
-      #let persons = json(bytes(sys.inputs.persons))
+    # Pass values into a typst template using sys_inputs
+    sys_inputs_example = %{
+    #let persons = json(bytes(sys.inputs.persons))
 
-      #for person in persons [
-        #person.name is #person.age years old.\\
-      ]
-      }
-      t = Typst::Pdf.from_s(sys_inputs_example, sys_inputs: { "persons" => [{"name": "John", "age": 35}, {"name": "Xoliswa", "age": 45}].to_json })
-
-      reader = HexaPDF::Document.new(io: StringIO.open(t.compiled.document))
-      processor = GetTextProcessor.new
-      reader.pages.each{ |page| page.process_contents(processor) }
-      processor.string == "John is 35 years old.\nXoliswa is 45 years old.\n"
-
-      t2 = Typst(body: sys_inputs_example).with_inputs({ "persons" => [{"name": "John", "age": 35}, {"name": "Xoliswa", "age": 45}].to_json }).compile(:pdf)
-
-      reader2 = HexaPDF::Document.new(io: StringIO.open(t2.document))
-      processor2 = GetTextProcessor.new
-      reader2.pages.each{ |page| page.process_contents(processor2) }
-      processor2.string == "John is 35 years old.\nXoliswa is 45 years old.\n"
+    #for person in persons [
+      #person.name is #person.age years old.\\
+    ]
     }
+    t = Typst::Pdf.from_s(sys_inputs_example, sys_inputs: { "persons" => [{"name": "John", "age": 35}, {"name": "Xoliswa", "age": 45}].to_json })
+
+    reader = HexaPDF::Document.new(io: StringIO.open(t.compiled.document))
+    processor = GetTextProcessor.new
+    reader.pages.each{ |page| page.process_contents(processor) }
+
+    assert_equal("John is 35 years old.\nXoliswa is 45 years old.\n", processor.string)
+
+    t2 = Typst(body: sys_inputs_example).with_inputs({ "persons" => [{"name": "John", "age": 35}, {"name": "Xoliswa", "age": 45}].to_json }).compile(:pdf)
+
+    reader2 = HexaPDF::Document.new(io: StringIO.open(t2.document))
+    processor2 = GetTextProcessor.new
+    reader2.pages.each{ |page| page.process_contents(processor2) }
+
+    assert_equal("John is 35 years old.\nXoliswa is 45 years old.\n", processor2.string)
   end
 
   def test_query
@@ -193,21 +193,20 @@ class TypstTest < Test::Unit::TestCase
 
   # Compilation succeeds after clearing the cache
   def test_clear_cache
-    assert {
-      require "os"
+    require "os"
 
-      Typst::clear_cache(10)
-      Typst::Pdf.new("test.typ")
-      Typst("test.typ").compile(:pdf)
-      Typst::clear_cache(0)
-      Typst::Pdf.new("test.typ")
-      Typst("test.typ").compile(:pdf)
+    Typst::clear_cache(10)
+    Typst::Pdf.new("test.typ")
+    Typst("test.typ").compile(:pdf)
+    Typst::clear_cache(0)
+    Typst::Pdf.new("test.typ")
+    Typst("test.typ").compile(:pdf)
 
-      bytes = OS.rss_bytes
-      Typst::clear_cache
-      cleared_bytes = OS.rss_bytes
-      bytes > cleared_bytes
-    }
+    bytes = OS.rss_bytes
+    Typst::clear_cache
+    cleared_bytes = OS.rss_bytes
+
+    assert_operator(bytes, :>,  cleared_bytes)
   end
 
   def test_typst_package
