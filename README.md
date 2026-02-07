@@ -107,6 +107,20 @@ Typst(body: main, dependencies: { "template.typ" => template, "icon.svg" => icon
 # From a zip with a named main typst file
 Typst(zip: "test/main.typ.zip", main_file: "hello.typ").compile(:pdf)
 
+# Use a package from the Typst Universe
+package_example = %q{
+#import "@preview/wordometer:0.1.5": word-count, total-words
+#show: word-count
+
+In this document, there are #total-words words all up.
+
+#word-count(total => [
+  The number of words in this block is #total.words
+  and there are #total.characters letters.
+])
+}
+Typst(body: package_example).compile(:pdf).write("package_example.pdf")
+
 Typst("readme.typ").query("heading").result
 # => 
 # [{"func" => "heading",

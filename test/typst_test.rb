@@ -209,4 +209,65 @@ class TypstTest < Test::Unit::TestCase
       bytes > cleared_bytes
     }
   end
+
+  def test_typst_package
+    pdf = Typst("invoice.typ", sys_inputs: { "data": {
+      "language": "en",
+      "banner-image": "template_with_font_and_icon/monkey.svg",
+      "invoice-id" => "11111",
+      "issuing-date" => Date.today,
+      "delivery-date" => Date.today,
+      "due-date" => Date.today,
+      "biller": {
+        "name" => "Gyro Gearloose",
+        "title" => "Inventor",
+        "company" => "Crazy Inventions Ltd.",
+        "vat-id" => "DL1234567",
+        "iban" => "DE89370400440532013000",
+        "address" => {
+          "country" => "Disneyland",
+          "city" => "Duckburg",
+          "postal-code" => "123456",
+          "street" => "Inventor Drive 23"
+        }
+      },
+      "hourly-rate": 100,
+      "recipient": {
+        "name": "Scrooge McDuckins",
+        "title": "Treasure Hunter",
+        "vat-id": "DL7654321",
+        "address": {
+          "country": "Disneyland",
+          "city": "Duckburg",
+          "postal-code": "123456",
+          "street": "Killmotor Hill 1"
+        }
+      },
+      "items": [
+        {
+          "date": "2016-04-03",
+          "description": "Arc reactor",
+          "quantity": 1,
+          "price": 13000
+        },
+        {
+          "date": "2016-04-05",
+          "description": "Flux capacitor",
+          "dur-min": 0,
+          "quantity": 1,
+          "price": 27000
+        }
+      ]
+    }.to_json}).compile(:pdf)
+
+    require "json"
+    require "hexapdf"
+    require "#{File.dirname(__FILE__)}/text_processor.rb"
+
+    reader = HexaPDF::Document.new(io: StringIO.open(pdf.document))
+    processor = GetTextProcessor.new
+    reader.pages.each{ |page| page.process_contents(processor) }
+
+    assert_includes(processor.string, "Flux capacitor")
+  end
 end
