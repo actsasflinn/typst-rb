@@ -118,8 +118,10 @@ t = Typst(body: sys_inputs_example)
 people.each do |person|
   t.with_inputs({ "persons" => [person].to_json }).compile(:pdf).write("#{person['name']}.pdf")
 end
+```
 
-# A more complex example of compiling from string
+=== A more complex example of compiling from string using other dependency typst template, svg and font resources all in memory
+```ruby
 main = %{
 #import "template.typ": *
 
