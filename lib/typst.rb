@@ -8,7 +8,7 @@ module Typst
   def self.register_format(**format)
     @@formats.merge!(format)
   end
-  
+
   def self.formats
     @@formats
   end
@@ -27,14 +27,14 @@ module Typst
 
       dependencies.each do |dep_name, dep_source|
         tmp_dep_file = Pathname.new(tmp_dir).join(dep_name)
-        File.write(tmp_dep_file, dep_source)
+        File.binwrite(tmp_dep_file, dep_source)
       end
 
       relative_font_path = Pathname.new(tmp_dir).join("fonts")
       relative_font_path.mkpath
       fonts.each do |font_name, font_bytes|
         tmp_font_file = relative_font_path.join(font_name)
-        File.write(tmp_font_file, font_bytes)
+        File.binwrite(tmp_font_file, font_bytes)
       end
 
       options[:file] = tmp_main_file
