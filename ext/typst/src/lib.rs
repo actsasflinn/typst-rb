@@ -21,6 +21,7 @@ fn to_html(
     font_paths: Vec<PathBuf>,
     resource_path: PathBuf,
     ignore_system_fonts: bool,
+    ignore_embedded_fonts: bool,
     sys_inputs: HashMap<String, String>,
 ) -> Result<Vec<Vec<u8>>, Error> {
     let input = input.canonicalize()
@@ -72,6 +73,7 @@ fn to_html(
         .features(feat)
         .font_paths(font_paths)
         .ignore_system_fonts(ignore_system_fonts)
+        .ignore_embedded_fonts(ignore_embedded_fonts)
         .build()
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
@@ -89,6 +91,7 @@ fn to_svg(
     font_paths: Vec<PathBuf>,
     resource_path: PathBuf,
     ignore_system_fonts: bool,
+    ignore_embedded_fonts: bool,
     sys_inputs: HashMap<String, String>,
 ) -> Result<Vec<Vec<u8>>, Error> {
     let input = input.canonicalize()
@@ -127,6 +130,7 @@ fn to_svg(
         ))
         .font_paths(font_paths)
         .ignore_system_fonts(ignore_system_fonts)
+        .ignore_embedded_fonts(ignore_embedded_fonts)
         .build()
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
@@ -144,6 +148,7 @@ fn to_png(
     font_paths: Vec<PathBuf>,
     resource_path: PathBuf,
     ignore_system_fonts: bool,
+    ignore_embedded_fonts: bool,
     sys_inputs: HashMap<String, String>,
     ppi: Option<f32>,
 ) -> Result<Vec<Vec<u8>>, Error> {
@@ -183,6 +188,7 @@ fn to_png(
         ))
         .font_paths(font_paths)
         .ignore_system_fonts(ignore_system_fonts)
+        .ignore_embedded_fonts(ignore_embedded_fonts)
         .build()
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
@@ -200,6 +206,7 @@ fn to_pdf(
     font_paths: Vec<PathBuf>,
     resource_path: PathBuf,
     ignore_system_fonts: bool,
+    ignore_embedded_fonts: bool,
     sys_inputs: HashMap<String, String>,
     pdf_standards: Vec<String>,
 ) -> Result<Vec<Vec<u8>>, Error> {
@@ -239,6 +246,7 @@ fn to_pdf(
         ))
         .font_paths(font_paths)
         .ignore_system_fonts(ignore_system_fonts)
+        .ignore_embedded_fonts(ignore_embedded_fonts)
         .build()
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
@@ -289,6 +297,7 @@ fn query(
     font_paths: Vec<PathBuf>,
     resource_path: PathBuf,
     ignore_system_fonts: bool,
+    ignore_embedded_fonts: bool,
     sys_inputs: HashMap<String, String>,
 ) -> Result<String, Error> {
     let format = match format.unwrap().to_ascii_lowercase().as_str() {
@@ -333,6 +342,7 @@ fn query(
     ))
     .font_paths(font_paths)
     .ignore_system_fonts(ignore_system_fonts)
+    .ignore_embedded_fonts(ignore_embedded_fonts)
     .build()
     .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
@@ -361,11 +371,11 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     env_logger::init();
 
     let module = ruby.define_module("Typst")?;
-    module.define_singleton_method("_to_pdf", function!(to_pdf, 7))?;
-    module.define_singleton_method("_to_svg", function!(to_svg, 6))?;
-    module.define_singleton_method("_to_png", function!(to_png, 7))?;
-    module.define_singleton_method("_to_html", function!(to_html, 6))?;
-    module.define_singleton_method("_query", function!(query, 10))?;
+    module.define_singleton_method("_to_pdf", function!(to_pdf, 8))?;
+    module.define_singleton_method("_to_svg", function!(to_svg, 7))?;
+    module.define_singleton_method("_to_png", function!(to_png, 8))?;
+    module.define_singleton_method("_to_html", function!(to_html, 7))?;
+    module.define_singleton_method("_query", function!(query, 11))?;
     module.define_singleton_method("_clear_cache", function!(clear_cache, 1))?;
     Ok(())
 }

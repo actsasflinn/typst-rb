@@ -3,8 +3,10 @@ use ecow::{eco_format, EcoString};
 use serde::Serialize;
 use typst::diag::{bail, StrResult, Warned};
 use typst::engine::Sink;
-use typst::foundations::{Content, IntoValue, LocatableSelector, Scope};
-use typst::layout::PagedDocument;
+use typst::foundations::{Content, Context, IntoValue, LocatableSelector, Scope};
+use typst::introspection::{EmptyIntrospector, Introspector};
+use typst::routines::SpanMode;
+use typst_layout::PagedDocument;
 use typst::syntax::Span;
 use typst::syntax::SyntaxMode;
 use typst::World;
@@ -73,13 +75,15 @@ fn retrieve(
     document: &PagedDocument,
 ) -> StrResult<Vec<Content>> {
     let selector = eval_string(
-        &typst::ROUTINES,
         world.track(),
+        world.library(),
         Sink::new().track_mut(),
+        EmptyIntrospector.track(),
+        Context::none().track(),
         &command.selector,
-        Span::detached(),
+        SpanMode::Uniform(Span::detached()),
         SyntaxMode::Code,
-        Scope::default(),
+        Scope::default()
     )
     .map_err(|errors| {
         let mut message = EcoString::from("failed to evaluate selector");
@@ -93,7 +97,7 @@ fn retrieve(
     .map_err(|e| e.message().clone())?;
 
     Ok(document
-        .introspector
+        .introspector()
         .query(&selector.0)
         .into_iter()
         .collect::<Vec<_>>())

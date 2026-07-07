@@ -2,9 +2,9 @@ module Typst
   class Query < Base
     attr_accessor :format
 
-    def initialize(selector, input, field: nil, one: false, format: "json", root: ".", font_paths: [], resource_path: ".", ignore_system_fonts: false, sys_inputs: {})
+    def initialize(selector, input, field: nil, one: false, format: "json", root: ".", font_paths: [], resource_path: ".", ignore_system_fonts: false, ignore_embedded_fonts: false, sys_inputs: {})
       self.format = format
-      @result = Typst::_query(selector, field, one, format, input, root, font_paths, resource_path, ignore_system_fonts, sys_inputs)
+      @result = Typst::_query(selector, field, one, format, input, root, font_paths, resource_path, ignore_system_fonts, ignore_embedded_fonts, sys_inputs)
     end
 
     def result(raw: false)
