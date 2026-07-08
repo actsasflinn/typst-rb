@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::collections::HashMap;
 
 use chrono::{DateTime, Datelike, FixedOffset, Local};
@@ -24,7 +24,7 @@ pub struct SystemWorld {
     /// Typst's standard library.
     library: LazyHash<Library>,
     /// Locations of and storage for lazily loaded fonts.
-    fonts: FontStore,
+    fonts: Arc<FontStore>,
     /// Maps file ids to source files and buffers.
     slots: Mutex<HashMap<FileId, FileSlot>>,
     /// Holds information about where packages are stored.
@@ -195,16 +195,7 @@ impl SystemWorldBuilder {
     }
 
     pub fn build(self) -> StrResult<SystemWorld> {
-        let mut fonts = FontStore::new();
-        if !self.ignore_system_fonts {
-            fonts.extend(fonts::system());
-        }
-        if !self.ignore_embedded_fonts {
-            fonts.extend(fonts::embedded());
-        }
-        for path in &self.font_paths {
-            fonts.extend(fonts::scan(path));
-        }
+        let fonts = Arc::new(build_font_store(self.ignore_system_fonts, self.ignore_embedded_fonts, self.font_paths));
 
         let package_storage = system_packages(self.package_path, self.package_cache_path);
 
@@ -224,6 +215,20 @@ impl SystemWorldBuilder {
         };
         Ok(world)
     }
+}
+
+fn build_font_store(ignore_system_fonts: bool, ignore_embedded_fonts: bool, font_paths: Vec<PathBuf>) -> FontStore {
+    let mut fonts = FontStore::new();
+    if !ignore_system_fonts {
+        fonts.extend(fonts::system());
+    }
+    if !ignore_embedded_fonts {
+        fonts.extend(fonts::embedded());
+    }
+    for path in font_paths {
+        fonts.extend(fonts::scan(&path));
+    }
+    fonts
 }
 
 fn system_packages(
