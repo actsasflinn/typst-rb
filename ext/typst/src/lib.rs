@@ -19,7 +19,6 @@ fn to_html(
     input: PathBuf,
     root: Option<PathBuf>,
     font_paths: Vec<PathBuf>,
-    resource_path: PathBuf,
     ignore_system_fonts: bool,
     ignore_embedded_fonts: bool,
     sys_inputs: HashMap<String, String>,
@@ -35,22 +34,6 @@ fn to_html(
     } else {
         PathBuf::new()
     };
-
-    let resource_path = resource_path.canonicalize()
-        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
-
-    let mut default_fonts = Vec::new();
-    for entry in walkdir::WalkDir::new(resource_path.join("fonts")) {
-        let path = entry
-            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
-            .into_path();
-        let Some(extension) = path.extension() else {
-            continue;
-        };
-        if extension == "ttf" || extension == "otf" {
-            default_fonts.push(path);
-        }
-    }
 
     let mut features = Vec::new();
     features.push(Feature::Html);
@@ -89,7 +72,6 @@ fn to_svg(
     input: PathBuf,
     root: Option<PathBuf>,
     font_paths: Vec<PathBuf>,
-    resource_path: PathBuf,
     ignore_system_fonts: bool,
     ignore_embedded_fonts: bool,
     sys_inputs: HashMap<String, String>,
@@ -105,22 +87,6 @@ fn to_svg(
     } else {
         PathBuf::new()
     };
-
-    let resource_path = resource_path.canonicalize()
-        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
-
-    let mut default_fonts = Vec::new();
-    for entry in walkdir::WalkDir::new(resource_path.join("fonts")) {
-        let path = entry
-            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
-            .into_path();
-        let Some(extension) = path.extension() else {
-            continue;
-        };
-        if extension == "ttf" || extension == "otf" {
-            default_fonts.push(path);
-        }
-    }
 
     let mut world = SystemWorld::builder(root, input)
         .inputs(Dict::from_iter(
@@ -146,7 +112,6 @@ fn to_png(
     input: PathBuf,
     root: Option<PathBuf>,
     font_paths: Vec<PathBuf>,
-    resource_path: PathBuf,
     ignore_system_fonts: bool,
     ignore_embedded_fonts: bool,
     sys_inputs: HashMap<String, String>,
@@ -163,22 +128,6 @@ fn to_png(
     } else {
         PathBuf::new()
     };
-
-    let resource_path = resource_path.canonicalize()
-        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
-
-    let mut default_fonts = Vec::new();
-    for entry in walkdir::WalkDir::new(resource_path.join("fonts")) {
-        let path = entry
-            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
-            .into_path();
-        let Some(extension) = path.extension() else {
-            continue;
-        };
-        if extension == "ttf" || extension == "otf" {
-            default_fonts.push(path);
-        }
-    }
 
     let mut world = SystemWorld::builder(root, input)
         .inputs(Dict::from_iter(
@@ -204,7 +153,6 @@ fn to_pdf(
     input: PathBuf,
     root: Option<PathBuf>,
     font_paths: Vec<PathBuf>,
-    resource_path: PathBuf,
     ignore_system_fonts: bool,
     ignore_embedded_fonts: bool,
     sys_inputs: HashMap<String, String>,
@@ -221,22 +169,6 @@ fn to_pdf(
     } else {
         PathBuf::new()
     };
-
-    let resource_path = resource_path.canonicalize()
-        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
-
-    let mut default_fonts = Vec::new();
-    for entry in walkdir::WalkDir::new(resource_path.join("fonts")) {
-        let path = entry
-            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
-            .into_path();
-        let Some(extension) = path.extension() else {
-            continue;
-        };
-        if extension == "ttf" || extension == "otf" {
-            default_fonts.push(path);
-        }
-    }
 
     let mut world = SystemWorld::builder(root, input)
         .inputs(Dict::from_iter(
@@ -295,7 +227,6 @@ fn query(
     input: PathBuf,
     root: Option<PathBuf>,
     font_paths: Vec<PathBuf>,
-    resource_path: PathBuf,
     ignore_system_fonts: bool,
     ignore_embedded_fonts: bool,
     sys_inputs: HashMap<String, String>,
@@ -317,22 +248,6 @@ fn query(
     } else {
         PathBuf::new()
     };
-
-    let resource_path = resource_path.canonicalize()
-        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
-
-    let mut default_fonts = Vec::new();
-    for entry in walkdir::WalkDir::new(resource_path.join("fonts")) {
-        let path = entry
-            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
-            .into_path();
-        let Some(extension) = path.extension() else {
-            continue;
-        };
-        if extension == "ttf" || extension == "otf" {
-            default_fonts.push(path);
-        }
-    }
 
     let mut world = SystemWorld::builder(root, input)
     .inputs(Dict::from_iter(
@@ -371,11 +286,11 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     env_logger::init();
 
     let module = ruby.define_module("Typst")?;
-    module.define_singleton_method("_to_pdf", function!(to_pdf, 8))?;
-    module.define_singleton_method("_to_svg", function!(to_svg, 7))?;
-    module.define_singleton_method("_to_png", function!(to_png, 8))?;
-    module.define_singleton_method("_to_html", function!(to_html, 7))?;
-    module.define_singleton_method("_query", function!(query, 11))?;
+    module.define_singleton_method("_to_pdf", function!(to_pdf, 7))?;
+    module.define_singleton_method("_to_svg", function!(to_svg, 6))?;
+    module.define_singleton_method("_to_png", function!(to_png, 7))?;
+    module.define_singleton_method("_to_html", function!(to_html, 6))?;
+    module.define_singleton_method("_query", function!(query, 10))?;
     module.define_singleton_method("_clear_cache", function!(clear_cache, 1))?;
     Ok(())
 }

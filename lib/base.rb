@@ -34,7 +34,6 @@ module Typst
       options[:dependencies] ||= {}
       options[:fonts] ||= {}
       options[:sys_inputs] ||= {}
-      options[:resource_path] ||= File.dirname(__FILE__)
       options[:ignore_system_fonts] ||= false
       options[:ignore_embedded_fonts] ||= false
     
@@ -42,7 +41,7 @@ module Typst
     end
 
     def typst_args
-      [options[:file], options[:root], options[:font_paths], options[:resource_path], options[:ignore_system_fonts], options[:ignore_embedded_fonts], options[:sys_inputs].map{ |k,v| [k.to_s,v.to_s] }.to_h]
+      [options[:file], options[:root], options[:font_paths], options[:ignore_system_fonts], options[:ignore_embedded_fonts], options[:sys_inputs].map{ |k,v| [k.to_s,v.to_s] }.to_h]
     end
 
     def typst_pdf_args
@@ -126,14 +125,14 @@ module Typst
       query_options = { field: field, one: one, format: format }
 
       if self.options.has_key?(:file)
-        Typst::Query.new(selector, self.options[:file], **query_options.merge(self.options.slice(:root, :font_paths, :resource_path, :ignore_system_fonts, :ignore_embedded_fonts, :sys_inputs)))
+        Typst::Query.new(selector, self.options[:file], **query_options.merge(self.options.slice(:root, :font_paths, :ignore_system_fonts, :ignore_embedded_fonts, :sys_inputs)))
       elsif self.options.has_key?(:body)
         Typst::build_world_from_s(self.options[:body], **self.options) do |opts|
-          Typst::Query.new(selector, opts[:file], **query_options.merge(opts.slice(:root, :font_paths, :resource_path, :ignore_system_fonts, :ignore_embedded_fonts, :sys_inputs)))
+          Typst::Query.new(selector, opts[:file], **query_options.merge(opts.slice(:root, :font_paths, :ignore_system_fonts, :ignore_embedded_fonts, :sys_inputs)))
         end
       elsif self.options.has_key?(:zip)
         Typst::build_world_from_zip(self.options[:zip], **self.options) do |opts|
-          Typst::Query.new(selector, opts[:file], **query_options.merge(opts.slice(:root, :font_paths, :resource_path, :ignore_system_fonts, :ignore_embedded_fonts, :sys_inputs)))
+          Typst::Query.new(selector, opts[:file], **query_options.merge(opts.slice(:root, :font_paths, :ignore_system_fonts, :ignore_embedded_fonts, :sys_inputs)))
         end
       else
         raise "No input given"
