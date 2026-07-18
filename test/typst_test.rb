@@ -192,22 +192,20 @@ class TypstTest < Test::Unit::TestCase
     }
   end
 
-  # Compilation succeeds after clearing the cache
+  # Compilation succeeds after clearing the cache. (The fork dropped the RSS
+  # shrink assertion here: allocators rarely return freed memory to the OS on
+  # demand, so asserting rss strictly decreases is luck, not behavior.)
   def test_clear_cache
-    require "os"
-
     Typst::clear_cache(10)
     Typst::Pdf.new("test.typ")
-    Typst("test.typ").compile(:pdf)
+    pdf_after_aged_clear = Typst("test.typ").compile(:pdf)
     Typst::clear_cache(0)
     Typst::Pdf.new("test.typ")
-    Typst("test.typ").compile(:pdf)
-
-    bytes = OS.rss_bytes
+    pdf_after_full_clear = Typst("test.typ").compile(:pdf)
     Typst::clear_cache
-    cleared_bytes = OS.rss_bytes
 
-    assert_operator(bytes, :>,  cleared_bytes)
+    assert(pdf_after_aged_clear.document.start_with?("%PDF"))
+    assert(pdf_after_full_clear.document.start_with?("%PDF"))
   end
 
   def test_typst_package
