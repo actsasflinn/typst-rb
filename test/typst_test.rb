@@ -50,12 +50,13 @@ class TypstTest < Test::Unit::TestCase
   end
 
   def test_png
-    require "pngcheck"
     png72 = Typst("test.typ").compile(:png, ppi: 72.0)
     png144 = Typst("test.typ").compile(:png, ppi: 144.0)
-    xy72 = PngCheck.analyze_buffer(png72.pages[0])[1].match(/(\d+)x(\d+),/)
-    xy144 = PngCheck.analyze_buffer(png144.pages[0])[1].match(/(\d+)x(\d+),/)
-    assert_equal(2, xy144[2].to_i / xy72[2].to_i)
+    # PNG IHDR: height is a big-endian uint32 at byte offset 20
+    # (8-byte signature + 4-byte length + "IHDR" + 4-byte width).
+    h72 = png72.pages[0].byteslice(20, 4).unpack1("N")
+    h144 = png144.pages[0].byteslice(20, 4).unpack1("N")
+    assert_equal(2, h144 / h72)
   end
 
   def test_svg
