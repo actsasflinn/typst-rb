@@ -6,7 +6,7 @@ Gem::Specification.new do |s|
   s.version = "0.15.0.0"
   s.authors = "Flinn"
   s.email = "flinn@actsasflinn.com"
-  s.files = Dir["{lib}/**/*.{rb,ttf,otf}", "ext/**/*.{rs,toml,lock,rb,ttf}"] + %w[README.md README.typ Cargo.toml Rakefile]
+  s.files = Dir["{lib}/**/*.{rb,ttf,otf}", "ext/**/*.{rs,toml,lock,rb,ttf}"] + %w[README.md README.typ Cargo.toml Cargo.lock Rakefile LICENSE]
   s.homepage = "https://github.com/actsasflinn/typst-rb"
   s.require_paths = ["lib"]
   s.extensions = %w[ext/typst/extconf.rb]

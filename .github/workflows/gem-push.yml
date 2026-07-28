@@ -6,6 +6,9 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: read
+
 jobs:
   test:
     strategy:
@@ -15,8 +18,8 @@ jobs:
         ruby: ["3.0", "3.1", "3.2", "3.3", "3.4"]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: oxidize-rb/actions/setup-ruby-and-rust@v1
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: oxidize-rb/actions/setup-ruby-and-rust@e5f9a49a7812a078584072f6e3f657ad247c8771 # v1
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
@@ -33,14 +36,15 @@ jobs:
       matrix:
         platform: ["x86_64-linux", "x86_64-linux-musl", "aarch64-linux", " aarch64-linux-musl", "x86_64-darwin", "arm64-darwin", "x64-mingw-ucrt"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: ruby/setup-ruby@003a5c4d8d6321bd302e38f6f0ec593f77f06600 # v1
         with:
-          ruby-version: "3.1"
-      - uses: oxidize-rb/actions/cross-gem@v1
+          ruby-version: "3.4"
+      - uses: oxidize-rb/actions/cross-gem@e5f9a49a7812a078584072f6e3f657ad247c8771 # v1
         with:
           platform: ${{ matrix.platform }}
-      - uses: actions/upload-artifact@v3
+          ruby-versions: "3.0,3.1,3.2,3.3,3.4,4.0"
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: gem-${{ matrix.platform }}
           path: pkg/*-${{ matrix.platform }}.gem
@@ -48,20 +52,42 @@ jobs:
   release:
     needs: cross-compile
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # the GitHub Release (provenance backup of the artifacts)
+      id-token: write  # OIDC for rubygems.org trusted publishing - no key exists
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: ruby/setup-ruby@003a5c4d8d6321bd302e38f6f0ec593f77f06600 # v1
+        with:
+          ruby-version: "3.4"
+          rubygems: latest
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:
           path: artifacts
-      - name: Move gems to pkg directory
+      - name: Collect gems and checksums
         run: |
           mkdir -p pkg
+          gem build typst.gemspec
+          mv typst-rb-*.gem pkg/
           find artifacts -name "*.gem" -exec mv {} pkg/ \;
-      - name: Publish to RubyGems
+          cd pkg && sha256sum *.gem > SHA256SUMS && cat SHA256SUMS
+      - name: Attach artifacts to the tag's release
         env:
-          RUBYGEMS_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir -p ~/.gem
-          echo "---
-          :rubygems_api_key: ${RUBYGEMS_API_KEY}" > ~/.gem/credentials
-          chmod 0600 ~/.gem/credentials
-          gem push pkg/*.gem
+          gh release create "$GITHUB_REF_NAME" pkg/*.gem pkg/SHA256SUMS \
+            --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "$GITHUB_REF_NAME" \
+            --notes "CI-built gems (source + platforms). Verify against SHA256SUMS."
+      # The credentials engine INSIDE the official rubygems/release-gem action
+      # (same SHA it pins). release-gem itself is unusable here: its rake
+      # release pushes only the single source gem, never pre-built platform
+      # gems - the reason native gems run bespoke pipelines.
+      - uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a # v2.1.0
+      - name: Publish to rubygems.org
+        run: |
+          for g in pkg/*.gem; do
+            gem push "$g"
+          done
+      - name: Wait for the release to propagate
+        run: gem exec rubygems-await pkg/*.gem
