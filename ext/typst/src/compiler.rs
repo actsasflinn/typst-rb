@@ -20,6 +20,7 @@ impl SystemWorld {
         format: Option<&str>,
         ppi: Option<f32>,
         pdf_standards: &[typst_pdf::PdfStandard],
+        pretty: bool,
     ) -> StrResult<Vec<Vec<u8>>> {
         // Reset everything and ensure that the main file is present.
         self.reset();
@@ -30,7 +31,7 @@ impl SystemWorld {
                 let Warned { output, warnings } = typst::compile::<HtmlDocument>(self);
                 match output {
                     Ok(document) => {
-                        Ok(vec![export_html(&document, self)?])
+                        Ok(vec![export_html(&document, self, pretty)?])
                     }
                     Err(errors) => Err(format_diagnostics(self, &errors, &warnings).unwrap().into()),
                 }
@@ -47,10 +48,11 @@ impl SystemWorld {
                                 self,
                                 typst_pdf::PdfStandards::new(pdf_standards)
                                     .map_err(|e| eco_format!("PDF standards error: {:?}", e))
-                                    .at(Span::detached()).unwrap()
+                                    .at(Span::detached()).unwrap(),
+                                pretty
                             )?]),
-                            "png" => Ok(export_image(&document, ImageExportFormat::Png, ppi)?),
-                            "svg" => Ok(export_image(&document, ImageExportFormat::Svg, ppi)?),
+                            "png" => Ok(export_image(&document, ImageExportFormat::Png, ppi, pretty)?),
+                            "svg" => Ok(export_image(&document, ImageExportFormat::Svg, ppi, pretty)?),
                             fmt => Err(eco_format!("unknown format: {fmt}")),
                         }
                     }
@@ -66,8 +68,9 @@ impl SystemWorld {
 fn export_html(
     document: &HtmlDocument,
     world: &SystemWorld,
+    pretty: bool,
 ) -> StrResult<Vec<u8>> {
-    let html = typst_html::html(document, &typst_html::HtmlOptions::default())
+    let html = typst_html::html(document, &typst_html::HtmlOptions{ pretty: pretty })
     .map_err(|e| match format_diagnostics(world, &e, &[]) {
         Ok(e) => EcoString::from(e),
         Err(err) => eco_format!("failed to print diagnostics ({err})"),
@@ -82,6 +85,7 @@ fn export_pdf(
     document: &PagedDocument,
     world: &SystemWorld,
     standards: typst_pdf::PdfStandards,
+    pretty: bool,
 ) -> StrResult<Vec<u8>> {
     let buffer = typst_pdf::pdf(
         document,
@@ -89,6 +93,7 @@ fn export_pdf(
             ident: typst::foundations::Smart::Auto,
             timestamp: now().map(typst_pdf::Timestamp::new_utc),
             standards,
+            pretty,
             ..Default::default()
         },
     )
@@ -123,6 +128,7 @@ fn export_image(
     document: &PagedDocument,
     fmt: ImageExportFormat,
     ppi: Option<f32>,
+    pretty: bool,
 ) -> StrResult<Vec<Vec<u8>>> {
     let mut buffers = Vec::new();
     for page in document.pages() {
@@ -137,7 +143,7 @@ fn export_image(
             .encode_png()
             .map_err(|err| eco_format!("failed to write PNG file ({err})"))?,
             ImageExportFormat::Svg => {
-                let svg = typst_svg::svg(page, &typst_svg::SvgOptions::default());
+                let svg = typst_svg::svg(page, &typst_svg::SvgOptions{ render_bleed: false, pretty: pretty });
                 svg.as_bytes().to_vec()
             }
         };

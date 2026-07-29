@@ -36,17 +36,26 @@ module Typst
       options[:sys_inputs] ||= {}
       options[:ignore_system_fonts] ||= false
       options[:ignore_embedded_fonts] ||= false
+      options[:pretty] ||= false
     
       self.options = options
     end
 
+    def typst_options
+      [:file, :root, :font_paths, :ignore_system_fonts, :ignore_embedded_fonts]
+    end
+
     def typst_args
-      [options[:file], options[:root], options[:font_paths], options[:ignore_system_fonts], options[:ignore_embedded_fonts], options[:sys_inputs].map{ |k,v| [k.to_s,v.to_s] }.to_h]
+      options.values_at(*typst_options).append(options[:sys_inputs].map{ |k,v| [k.to_s,v.to_s] }.to_h)
+    end
+
+    def typst_pretty_args
+      options.values_at(*typst_options, :pretty).append(options[:sys_inputs].map{ |k,v| [k.to_s,v.to_s] }.to_h)
     end
 
     def typst_pdf_args
       options[:pdf_standards] ||= []
-      [*typst_args, options[:pdf_standards]]
+      [*typst_pretty_args, options[:pdf_standards]]
     end
 
     def typst_png_args
@@ -97,6 +106,16 @@ module Typst
 
     def with_root(root)
       self.options[:root] = root
+      self
+    end
+
+    def pretty(pretty = true)
+      self.options[:pretty] = pretty
+      self
+    end
+
+    def ugly(pretty = false)
+      self.pretty(pretty)
       self
     end
 

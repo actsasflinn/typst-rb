@@ -2,7 +2,7 @@ module Typst
   class Svg < Base
     def initialize(*options)
       super(*options)
-      @compiled = SvgDocument.new(Typst::_to_svg(*self.typst_args))
+      @compiled = SvgDocument.new(Typst::_to_svg(*self.typst_pretty_args))
     end
   end
   class SvgDocument < Document

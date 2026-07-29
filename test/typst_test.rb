@@ -73,6 +73,15 @@ class TypstTest < Test::Unit::TestCase
     }
   end
 
+  def test_html_pretty
+    assert {
+      pretty_html = Typst(body: %{hello world}).pretty.compile(:html_experimental).document
+      ugly_html = Typst(body: %{hello world}).ugly.compile(:html_experimental).document
+      pretty_html.include?("\n")
+      !ugly_html.include?("\n")
+    }
+  end
+
   def test_from_s
     assert {
       Typst::Pdf.from_s(%{hello world}, dependencies: nil, fonts: nil)

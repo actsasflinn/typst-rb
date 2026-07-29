@@ -21,6 +21,7 @@ fn to_html(
     font_paths: Vec<PathBuf>,
     ignore_system_fonts: bool,
     ignore_embedded_fonts: bool,
+    pretty: bool,
     sys_inputs: HashMap<String, String>,
 ) -> Result<Vec<Vec<u8>>, Error> {
     let input = input.canonicalize()
@@ -61,7 +62,7 @@ fn to_html(
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
     let bytes = world
-        .compile(Some("html"), None, &Vec::new())
+        .compile(Some("html"), None, &Vec::new(), pretty)
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
     Ok(bytes)
@@ -74,6 +75,7 @@ fn to_svg(
     font_paths: Vec<PathBuf>,
     ignore_system_fonts: bool,
     ignore_embedded_fonts: bool,
+    pretty: bool,
     sys_inputs: HashMap<String, String>,
 ) -> Result<Vec<Vec<u8>>, Error> {
     let input = input.canonicalize()
@@ -101,7 +103,7 @@ fn to_svg(
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
     let svg_bytes = world
-        .compile(Some("svg"), None, &Vec::new())
+        .compile(Some("svg"), None, &Vec::new(), pretty)
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
     Ok(svg_bytes)
@@ -142,7 +144,7 @@ fn to_png(
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
     let bytes = world
-        .compile(Some("png"), ppi, &Vec::new())
+        .compile(Some("png"), ppi, &Vec::new(), false)
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
     Ok(bytes)
@@ -155,6 +157,7 @@ fn to_pdf(
     font_paths: Vec<PathBuf>,
     ignore_system_fonts: bool,
     ignore_embedded_fonts: bool,
+    pretty: bool,
     sys_inputs: HashMap<String, String>,
     pdf_standards: Vec<String>,
 ) -> Result<Vec<Vec<u8>>, Error> {
@@ -212,7 +215,7 @@ fn to_pdf(
     }
 
     let pdf_bytes = world
-        .compile(Some("pdf"), None, &pdf_standards_vec)
+        .compile(Some("pdf"), None, &pdf_standards_vec, pretty)
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
     Ok(pdf_bytes)
@@ -286,10 +289,10 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     env_logger::init();
 
     let module = ruby.define_module("Typst")?;
-    module.define_singleton_method("_to_pdf", function!(to_pdf, 7))?;
-    module.define_singleton_method("_to_svg", function!(to_svg, 6))?;
+    module.define_singleton_method("_to_pdf", function!(to_pdf, 8))?;
+    module.define_singleton_method("_to_svg", function!(to_svg, 7))?;
     module.define_singleton_method("_to_png", function!(to_png, 7))?;
-    module.define_singleton_method("_to_html", function!(to_html, 6))?;
+    module.define_singleton_method("_to_html", function!(to_html, 7))?;
     module.define_singleton_method("_query", function!(query, 10))?;
     module.define_singleton_method("_clear_cache", function!(clear_cache, 1))?;
     Ok(())
