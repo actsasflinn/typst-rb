@@ -23,6 +23,11 @@ RbSys::ExtensionTask.new("typst", spec) do |ext|
   ext.cross_platform = CROSS_PLATFORMS
 end
 
+Rake::Task['release'].clear
+desc "Create tag #{spec.version} and build"
+task "release", [:remote] => ["build", "release:guard_clean", "release:source_control_push"] do
+end
+
 Rake::TestTask.new do |t|
   t.libs << "test"
   t.test_files = FileList['test/*_test.rb']
