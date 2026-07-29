@@ -68,7 +68,7 @@ jobs:
         run: |
           mkdir -p pkg
           gem build typst.gemspec
-          mv typst-rb-*.gem pkg/
+          mv typst-*.gem pkg/
           find artifacts -name "*.gem" -exec mv {} pkg/ \;
           cd pkg && sha256sum *.gem > SHA256SUMS && cat SHA256SUMS
       - name: Attach artifacts to the tag's release
