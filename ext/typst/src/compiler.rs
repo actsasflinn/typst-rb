@@ -21,6 +21,7 @@ impl SystemWorld {
         ppi: Option<f32>,
         pdf_standards: &[typst_pdf::PdfStandard],
         pretty: bool,
+        render_bleed: bool,
     ) -> StrResult<Vec<Vec<u8>>> {
         // Reset everything and ensure that the main file is present.
         self.reset();
@@ -49,10 +50,10 @@ impl SystemWorld {
                                 typst_pdf::PdfStandards::new(pdf_standards)
                                     .map_err(|e| eco_format!("PDF standards error: {:?}", e))
                                     .at(Span::detached()).unwrap(),
-                                pretty
+                                pretty,
                             )?]),
-                            "png" => Ok(export_image(&document, ImageExportFormat::Png, ppi, pretty)?),
-                            "svg" => Ok(export_image(&document, ImageExportFormat::Svg, ppi, pretty)?),
+                            "png" => Ok(export_image(&document, ImageExportFormat::Png, ppi, pretty, render_bleed)?),
+                            "svg" => Ok(export_image(&document, ImageExportFormat::Svg, ppi, pretty, render_bleed)?),
                             fmt => Err(eco_format!("unknown format: {fmt}")),
                         }
                     }
@@ -129,6 +130,7 @@ fn export_image(
     fmt: ImageExportFormat,
     ppi: Option<f32>,
     pretty: bool,
+    render_bleed: bool,
 ) -> StrResult<Vec<Vec<u8>>> {
     let mut buffers = Vec::new();
     for page in document.pages() {
@@ -137,13 +139,16 @@ fn export_image(
                 page,
                 &typst_render::RenderOptions {
                     pixel_per_pt: typst::utils::Scalar::new(f64::from(ppi.unwrap_or(144.0) / 72.0)),
-                    render_bleed: false,
+                    render_bleed: render_bleed,
                 },
             )
             .encode_png()
             .map_err(|err| eco_format!("failed to write PNG file ({err})"))?,
             ImageExportFormat::Svg => {
-                let svg = typst_svg::svg(page, &typst_svg::SvgOptions{ render_bleed: false, pretty: pretty });
+                let svg = typst_svg::svg(
+                    page,
+                    &typst_svg::SvgOptions{ render_bleed: render_bleed, pretty: pretty }
+                );
                 svg.as_bytes().to_vec()
             }
         };

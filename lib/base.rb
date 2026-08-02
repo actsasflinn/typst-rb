@@ -37,29 +37,32 @@ module Typst
       options[:ignore_system_fonts] ||= false
       options[:ignore_embedded_fonts] ||= false
       options[:pretty] ||= false
+      options[:render_bleed] ||= false
     
       self.options = options
     end
 
     def typst_options
-      [:file, :root, :font_paths, :ignore_system_fonts, :ignore_embedded_fonts]
+      [:file, :root, :font_paths, :ignore_system_fonts, :ignore_embedded_fonts, :render_bleed]
     end
 
-    def typst_args
-      options.values_at(*typst_options).append(options[:sys_inputs].map{ |k,v| [k.to_s,v.to_s] }.to_h)
+    def typst_args(opts)
+      options.values_at(*opts).append(options[:sys_inputs].map{ |k,v| [k.to_s,v.to_s] }.to_h)
     end
 
     def typst_pretty_args
-      options.values_at(*typst_options, :pretty).append(options[:sys_inputs].map{ |k,v| [k.to_s,v.to_s] }.to_h)
+      typst_args(typst_options.append(:pretty))
     end
 
     def typst_pdf_args
       options[:pdf_standards] ||= []
-      [*typst_pretty_args, options[:pdf_standards]]
+      opts = typst_options - [:render_bleed] + [:pretty]
+      args = typst_args(opts)
+      [*args, options[:pdf_standards]]
     end
 
     def typst_png_args
-      [*typst_args, options[:ppi]]
+      [*typst_args(typst_options), options[:ppi]]
     end
 
     def self.from_s(main_source, **options)
