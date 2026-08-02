@@ -23,6 +23,7 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
+          cache-version: 2
       - run: git submodule init
       - run: git submodule update
       - run: bundle exec rake compile
