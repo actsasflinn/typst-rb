@@ -13,14 +13,24 @@ gem install typst
 
 ```ruby
 require "typst"
-
-# Compile a typst file and write the output to a PDF file
-Typst("readme.typ").compile(:pdf).write("readme.pdf")
 ```
 
-### Use a typst file `readme.typ`
+### Hello World
 ```ruby
-t = Typst("readme.typ")
+t = Typst(body: %{hello world}).compile(:pdf).write("hello_world.pdf")
+```
+
+### Open a remote typst file
+```ruby
+require "open-uri"
+URI.open("https://github.com/actsasflinn/typst-rb/raw/refs/heads/main/README.typ") do |u|
+  Typst(body: u.read).compile(:pdf).write("remote_readme.pdf")
+end
+```
+
+### Open a local typst file named `example.typ`
+```ruby
+t = Typst("example.typ")
 ```
 
 ### Use a typst string
@@ -28,9 +38,21 @@ t = Typst("readme.typ")
 t = Typst(body: %{hello world})
 ```
 
-### Use a typst file in a zip file
+### Use a zipped typst file
 ```ruby
 t = Typst(zip: "test/main.typ.zip")
+```
+
+### Open a remote zipped typst file
+```ruby
+require "open-uri"
+URI.open("https://github.com/actsasflinn/typst-rb/raw/refs/heads/main/test/hello.typ.zip") do |u|
+  Tempfile.create do |f|
+    f.write(u.read)
+    f.rewind
+    Typst(zip: f).compile(:pdf).write("remote_zipped.pdf")
+  end
+end
 ```
 
 ### Compile to PDF
@@ -137,7 +159,7 @@ font_bytes = File.read("Example.ttf")
 Typst(body: main, dependencies: { "template.typ" => template, "icon.svg" => icon }, fonts: { "Example.ttf" => font_bytes }).compile(:pdf)
 ```
  
-### From a zip with a named main typst file
+### Use a zip file with an alternatively named main typst file
 ```ruby
 Typst(zip: "test/main.typ.zip", main_file: "hello.typ").compile(:pdf)
 ```
