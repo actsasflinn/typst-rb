@@ -17,15 +17,7 @@ require "typst"
 
 ### Hello World
 ```ruby
-t = Typst(body: %{hello world}).compile(:pdf).write("hello_world.pdf")
-```
-
-### Open a remote typst file
-```ruby
-require "open-uri"
-URI.open("https://github.com/actsasflinn/typst-rb/raw/refs/heads/main/README.typ") do |u|
-  Typst(body: u.read).compile(:pdf).write("remote_readme.pdf")
-end
+Typst(body: %{hello world}).compile(:pdf).write("hello_world.pdf")
 ```
 
 ### Open a local typst file named `example.typ`
@@ -41,6 +33,14 @@ t = Typst(body: %{hello world})
 ### Use a zipped typst file
 ```ruby
 t = Typst(zip: "test/main.typ.zip")
+```
+
+### Open a remote typst file
+```ruby
+require "open-uri"
+URI.open("https://github.com/actsasflinn/typst-rb/raw/refs/heads/main/README.typ") do |u|
+  Typst(body: u.read).compile(:pdf).write("remote_readme.pdf")
+end
 ```
 
 ### Open a remote zipped typst file
