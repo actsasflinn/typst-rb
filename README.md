@@ -13,7 +13,7 @@ Add the following to your gemfile and `bundle install`
 ```ruby
 gem 'typst', '>= 0.15.1.5'
 ```
-or
+or install from the command line:
 ```bash
 gem install typst
 ```
