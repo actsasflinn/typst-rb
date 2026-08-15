@@ -1,10 +1,19 @@
 # typst-rb
 
-Ruby binding to [typst](https://github.com/typst/typst),
+Ruby language binding to [typst](https://github.com/typst/typst),
 a new markup-based typesetting system that is powerful and easy to learn.
+
+## Rubygems
+
+ Source and native gems are provided for the following platforms: `aarch64-linux` `aarch64-linux-musl` `arm64-darwin` `x64-mingw-ucrt` `x86_64-darwin` `x86_64-linux` `x86_64-linux-musl`. The gems are built from CI [gem-push](https://github.com/actsasflinn/typst-rb/actions/workflows/gem-push.yml) action and can be verified against SHA256SUMS published with the [release](https://github.com/actsasflinn/typst-rb/releases).
 
 ## Installation
 
+Add the following to your gemfile and `bundle install`
+```ruby
+gem 'typst', '>= 0.15.1.5'
+```
+or
 ```bash
 gem install typst
 ```
@@ -16,26 +25,42 @@ require "typst"
 ```
 
 ### Hello World
+This example compiles a typst string to PDF and writes to a file.
 ```ruby
-Typst(body: %{hello world}).compile(:pdf).write("hello_world.pdf")
+Typst(body: "= Hello World\nThis is your first typst PDF").compile(:pdf).write("hello_world.pdf")
 ```
 
-### Open a local typst file named `example.typ`
+### The basics
+This example initializes a `Typst::Base` object `t` using a string. The `t` object is basically an environment for your typst input and can take a variety of options suitable for your task which you can see in subsequent examples.
+```ruby
+t = Typst(body: "= Hello World\nThis is your first typst PDF")
+```
+This step compiles the typst input held in the `t` object and returns a `Typst::Document` object `doc`. In this case we're compiling to PDF so `doc` is a `Typst::PdfDocument` object which holds the PDF bytes and is ready to write to a file, output to a buffer, etc.
+```ruby
+doc = t.compile(:pdf)
+```
+This step writes the output to a local file in your current working directory.
+```ruby
+doc.write("hello_world.pdf")
+```
+### Different ways to setup the typst input
+
+#### Use a local typst file named `example.typ`
 ```ruby
 t = Typst("example.typ")
 ```
 
-### Use a typst string
+#### Use a typst string
 ```ruby
 t = Typst(body: %{hello world})
 ```
 
-### Use a zipped typst file
+#### Use a zipped typst file
 ```ruby
 t = Typst(zip: "test/main.typ.zip")
 ```
 
-### Open a remote typst file
+#### Use a remote typst file
 ```ruby
 require "open-uri"
 URI.open("https://github.com/actsasflinn/typst-rb/raw/refs/heads/main/README.typ") do |u|
@@ -43,7 +68,7 @@ URI.open("https://github.com/actsasflinn/typst-rb/raw/refs/heads/main/README.typ
 end
 ```
 
-### Open a remote zipped typst file
+#### Use a remote zipped typst file
 ```ruby
 require "open-uri"
 URI.open("https://github.com/actsasflinn/typst-rb/raw/refs/heads/main/test/hello.typ.zip") do |u|
@@ -55,49 +80,53 @@ URI.open("https://github.com/actsasflinn/typst-rb/raw/refs/heads/main/test/hello
 end
 ```
 
-### Compile to PDF
+### Compiling
+
+#### Compile to PDF
 ```ruby
 doc = t.compile(:pdf)
 ```
 
-### Compile to PDF selecting the typst supported PdfStandard
+#### Compile to PDF selecting the typst supported PdfStandard
 ```ruby
 doc = t.compile(:pdf, pdf_standards: ["2.0"])
 ```
 
-### Compile to SVG
+#### Compile to SVG
 ```ruby
 doc = t.compile(:svg)
 ```
 
-### Compile to PNG
+#### Compile to PNG
 ```ruby
 doc = t.compile(:png)
 ```
 
-### Compile to PNG and set PPI
+#### Compile to PNG and set PPI
 ```ruby
 doc = t.compile(:png, ppi: 72)
 ```
 
-### Compile to HTML (using Typst expirmental HTML)
+#### Compile to HTML (using Typst expirmental HTML)
 ```ruby
 doc = t.compile(:html_experimental)
 ```
 
-### Or return content as an array of bytes
+### Output
+
+#### Return compiled content as an array of bytes
 ```ruby
 pdf_bytes = Typst("readme.typ").compile(:pdf).bytes
 # => [37, 80, 68, 70, 45, 49, 46, 55, 10, 37, 128 ...]
 ```
 
-### Write the output to a file
-Note: for multi-page documents using formats other than PDF and HTML, pages write to multiple files, e.g. `readme_0.png`, `readme_1.png`
+#### Write compiled output to a file
+Note: for multi-page documents using formats other than PDF and HTML, pages write to multiple files, e.g. `filename_0.png`, `filename_1.png`
 ```ruby
 doc.write("filename.pdf")
 ```
 
-### Return PDF, SVG, PNG or HTML content as an array of pages
+#### Return PDF, SVG, PNG or HTML content as an array of pages
 ```ruby
 Typst("readme.typ").compile(:pdf).pages
 # => ["%PDF-1.7\n%\x80\x80\x80\x80\n\n1 0 obj\n<<\n  /Type /Pages\n  /Count 3\n  /Kids [160 0 R 162 ...
@@ -112,7 +141,9 @@ Typst("readme.typ").compile(:html_experimental).pages
 # => ["<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\">\n    <meta name=\"viewport\" ...
 ```
 
-### Pass values into typst using sys_inputs
+### More advanced setups
+
+#### Pass values into typst using sys_inputs
 ```ruby
 sys_inputs_example = %{
 #let persons = json(bytes(sys.inputs.persons))
@@ -126,7 +157,7 @@ data = { "persons" => people.to_json }
 Typst(body: sys_inputs_example, sys_inputs: data).compile(:pdf).write("sys_inputs_example.pdf")
 ```
 
-### Apply inputs to typst to product multiple PDFs
+#### Apply inputs to typst to product multiple PDFs
 ```ruby
 t = Typst(body: sys_inputs_example)
 people.each do |person|
@@ -134,7 +165,7 @@ people.each do |person|
 end
 ```
 
-### A more complex example of compiling from string using other dependency typst template, svg and font resources all in memory
+#### A more complex example of compiling from string using other dependency typst template, svg and font resources all in memory
 ```ruby
 main = %{
 #import "template.typ": *
@@ -159,12 +190,12 @@ font_bytes = File.read("Example.ttf")
 Typst(body: main, dependencies: { "template.typ" => template, "icon.svg" => icon }, fonts: { "Example.ttf" => font_bytes }).compile(:pdf)
 ```
  
-### Use a zip file with an alternatively named main typst file
+#### Use a zip file with an alternatively named main typst file
 ```ruby
 Typst(zip: "test/main.typ.zip", main_file: "hello.typ").compile(:pdf)
 ```
 
-### Use a package from the [Typst Universe](https://typst.app/universe)
+#### Use a package from the [Typst Universe](https://typst.app/universe)
 Your package_example.typ file...
 ```typst
 #import "@preview/wordometer:0.1.5": word-count, total-words
