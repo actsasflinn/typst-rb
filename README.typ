@@ -256,7 +256,8 @@ typst-rb is based on #link("https://github.com/messense/typst-py")[typst-py] by 
 clear_cache was contributed by #link("https://github.com/NRicciVestmark")[NRicciVestmark]\
 CI improvements were contributed by #link("https://github.com/am1006")[am1006]\
 Defect resolutions by #link("https://github.com/adam12")[adam12] and #link("https://github.com/walterdavis")[walterdavis]\
-Design suggestions by #link("https://github.com/alec-c4")[alec-c4]
+Design suggestions by #link("https://github.com/alec-c4")[alec-c4]\
+Compiler warnings were contributed by #link("https://github.com/TheSoloHacker47")[TheSoloHacker47]
 
 == License
 
