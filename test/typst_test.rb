@@ -192,6 +192,64 @@ class TypstTest < Test::Unit::TestCase
     assert_equal("John is 35 years old.\nXoliswa is 45 years old.\n", processor2.string)
   end
 
+  # A compile can succeed *and* warn. The most common case is an unknown font
+  # family: Typst substitutes a different face, the PDF is produced, and
+  # nothing tells the caller their document is in the wrong typeface.
+  def test_warnings_on_successful_compile
+    document = Typst(
+      body: %{#set text(font: "No Such Font Family ZZZ")\n= Heading},
+      ignore_system_fonts: true
+    ).compile(:pdf)
+
+    assert(document.document.start_with?("%PDF"))
+    assert(document.warnings?)
+    assert(document.warnings.any? { |warning| warning.include?("unknown font family") })
+  end
+
+  def test_no_warnings_on_clean_compile
+    document = Typst(body: %{= Heading\n\nSome text.}).compile(:pdf)
+
+    assert(document.document.start_with?("%PDF"))
+    assert_equal([], document.warnings)
+    assert(!document.warnings?)
+  end
+
+  # test.typ names "Fasthand", which is only on the font path when the test
+  # suite supplies it. Compiled without that path it has always warned and
+  # always substituted another face silently — which is the behaviour this
+  # change exists to make visible.
+  def test_warning_when_a_declared_font_is_not_on_the_path
+    document = Typst("test.typ").compile(:pdf)
+
+    assert(document.warnings?)
+    assert(document.warnings.first.include?("unknown font family"))
+
+    with_font = Typst("test.typ", font_paths: ["fonts/Fasthand/Release/ttf"]).compile(:pdf)
+
+    assert_equal([], with_font.warnings)
+  end
+
+  def test_warnings_are_returned_for_every_format
+    formats = { pdf: :pdf, svg: :svg, png: :png, html_experimental: :html_experimental }
+    formats.each_value do |format|
+      document = Typst(
+        body: %{#set text(font: "No Such Font Family ZZZ")\n= Heading},
+        ignore_system_fonts: true
+      ).compile(format)
+
+      assert(document.warnings.is_a?(Array), "#{format} did not return warnings")
+    end
+  end
+
+  # Errors still carry their warnings inline, as before.
+  def test_compile_error_is_unchanged
+    error = assert_raise(ArgumentError) do
+      Typst(body: %{#let x = }).compile(:pdf)
+    end
+
+    assert(error.message.include?("expected expression"))
+  end
+
   def test_query
     assert {
       Typst("test.typ").query("heading").result

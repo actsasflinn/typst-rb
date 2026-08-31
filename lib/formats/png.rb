@@ -2,7 +2,8 @@ module Typst
   class Png < Base
     def initialize(*options)
       super(*options)
-      @compiled = PngDocument.new(Typst::_to_png(*self.typst_png_args))
+      bytes, warnings = Typst::_to_png(*self.typst_png_args)
+      @compiled = PngDocument.new(bytes, warnings)
     end
   end
   class PngDocument < Document

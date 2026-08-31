@@ -22,7 +22,7 @@ impl SystemWorld {
         pdf_standards: &[typst_pdf::PdfStandard],
         pretty: bool,
         render_bleed: bool,
-    ) -> StrResult<Vec<Vec<u8>>> {
+    ) -> StrResult<(Vec<Vec<u8>>, Vec<String>)> {
         // Reset everything and ensure that the main file is present.
         self.reset();
         self.source(self.main()).map_err(|err| err.to_string())?;
@@ -32,7 +32,7 @@ impl SystemWorld {
                 let Warned { output, warnings } = typst::compile::<HtmlDocument>(self);
                 match output {
                     Ok(document) => {
-                        Ok(vec![export_html(&document, self, pretty)?])
+                        Ok((vec![export_html(&document, self, pretty)?], self.format_warnings(&warnings)))
                     }
                     Err(errors) => Err(format_diagnostics(self, &errors, &warnings).unwrap().into()),
                 }
@@ -43,24 +43,44 @@ impl SystemWorld {
                     // Export the PDF / PNG.
                     Ok(document) => {
                         // Assert format is "pdf" or "png" or "svg"
-                        match format.unwrap_or("pdf").to_ascii_lowercase().as_str() {
-                            "pdf" => Ok(vec![export_pdf(
+                        let buffers = match format.unwrap_or("pdf").to_ascii_lowercase().as_str() {
+                            "pdf" => vec![export_pdf(
                                 &document,
                                 self,
                                 typst_pdf::PdfStandards::new(pdf_standards)
                                     .map_err(|e| eco_format!("PDF standards error: {:?}", e))
                                     .at(Span::detached()).unwrap(),
                                 pretty,
-                            )?]),
-                            "png" => Ok(export_image(&document, ImageExportFormat::Png, ppi, pretty, render_bleed)?),
-                            "svg" => Ok(export_image(&document, ImageExportFormat::Svg, ppi, pretty, render_bleed)?),
-                            fmt => Err(eco_format!("unknown format: {fmt}")),
-                        }
+                            )?],
+                            "png" => export_image(&document, ImageExportFormat::Png, ppi, pretty, render_bleed)?,
+                            "svg" => export_image(&document, ImageExportFormat::Svg, ppi, pretty, render_bleed)?,
+                            fmt => return Err(eco_format!("unknown format: {fmt}")),
+                        };
+                        Ok((buffers, self.format_warnings(&warnings)))
                     }
                     Err(errors) => Err(format_diagnostics(self, &errors, &warnings).unwrap().into()),
                 }
             }
         }
+    }
+
+    /// One formatted string per warning.
+    ///
+    /// A successful compile can still produce warnings — an unknown font
+    /// family being the one that bites people, because Typst substitutes a
+    /// different face and the document still generates. Previously those were
+    /// dropped on the floor: `format_diagnostics` only ever saw them on the
+    /// error path. Returning them one per entry (rather than as a single
+    /// blob) means a caller can count them, filter them, or attach them to a
+    /// log line without parsing.
+    fn format_warnings(&self, warnings: &[SourceDiagnostic]) -> Vec<String> {
+        warnings
+            .iter()
+            .map(|warning| {
+                format_diagnostics(self, &[], std::slice::from_ref(warning))
+                    .unwrap_or_else(|_| warning.message.to_string())
+            })
+            .collect()
     }
 }
 
