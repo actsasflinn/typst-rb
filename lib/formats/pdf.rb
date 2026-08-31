@@ -2,7 +2,8 @@ module Typst
   class Pdf < Base
     def initialize(*options)
       super(*options)
-      @compiled = PdfDocument.new(Typst::_to_pdf(*self.typst_pdf_args))
+      bytes, warnings = Typst::_to_pdf(*self.typst_pdf_args)
+      @compiled = PdfDocument.new(bytes, warnings)
     end
   end
   class PdfDocument < Document

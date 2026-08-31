@@ -213,6 +213,25 @@ In this document, there are #total-words words all up.
 Typst("package_example.typ").compile(:pdf).write("package_example.pdf")
 ```
 
+### Compiler warnings
+
+A compile can succeed *and* warn. The most common case is an unknown font
+family: typst substitutes a different face, the document is produced, and
+nothing tells you it is in the wrong typeface. Every compiled document carries
+the warnings that came with it.
+
+```ruby
+doc = Typst(body: %{#set text(font: "Not Installed")\n= Hello}).compile(:pdf)
+doc.warnings?
+# => true
+doc.warnings
+# => ["warning: unknown font family: \"Not Installed\"\n  ┌─ /tmp/.../main.typ:1:0\n ..."]
+```
+
+Each entry is one formatted diagnostic, so they can be counted, filtered or
+logged individually. A clean compile returns an empty array. Warnings that
+accompany a compile *error* are still included in the raised message, as before.
+
 ### Query a typst document
 ```ruby
 Typst("readme.typ").query("heading").result

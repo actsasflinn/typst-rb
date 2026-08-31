@@ -2,8 +2,18 @@ module Typst
   class Document
     attr_accessor :bytes
 
-    def initialize(bytes)
+    # Diagnostics the compiler emitted while *succeeding*. An unknown font
+    # family is the common one: Typst substitutes another face, the document
+    # generates, and nothing tells you unless you look here.
+    attr_accessor :warnings
+
+    def initialize(bytes, warnings = [])
       @bytes = bytes
+      @warnings = warnings
+    end
+
+    def warnings?
+      !warnings.empty?
     end
 
     def write_some(filename)

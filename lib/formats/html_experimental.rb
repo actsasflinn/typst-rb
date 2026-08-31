@@ -2,7 +2,8 @@ module Typst
   class HtmlExperimental < Base
     def initialize(*options)
       super(*options)
-      @compiled = HtmlExperimentalDocument.new(Typst::_to_html(*self.typst_pretty_args))
+      bytes, warnings = Typst::_to_html(*self.typst_pretty_args)
+      @compiled = HtmlExperimentalDocument.new(bytes, warnings)
     end
   end
   class HtmlExperimentalDocument < Document

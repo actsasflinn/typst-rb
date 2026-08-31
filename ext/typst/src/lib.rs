@@ -24,7 +24,7 @@ fn to_html(
     render_bleed: bool,
     pretty: bool,
     sys_inputs: HashMap<String, String>,
-) -> Result<Vec<Vec<u8>>, Error> {
+) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
     let input = input.canonicalize()
         .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
 
@@ -62,11 +62,11 @@ fn to_html(
         .build()
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
-    let bytes = world
+    let compiled = world
         .compile(Some("html"), None, &Vec::new(), pretty, render_bleed)
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
-    Ok(bytes)
+    Ok(compiled)
 }
 
 fn to_svg(
@@ -79,7 +79,7 @@ fn to_svg(
     render_bleed: bool,
     pretty: bool,
     sys_inputs: HashMap<String, String>,
-) -> Result<Vec<Vec<u8>>, Error> {
+) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
     let input = input.canonicalize()
         .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
 
@@ -104,11 +104,11 @@ fn to_svg(
         .build()
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
-    let svg_bytes = world
+    let compiled = world
         .compile(Some("svg"), None, &Vec::new(), pretty, render_bleed)
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
-    Ok(svg_bytes)
+    Ok(compiled)
 }
 
 fn to_png(
@@ -121,7 +121,7 @@ fn to_png(
     render_bleed: bool,
     sys_inputs: HashMap<String, String>,
     ppi: Option<f32>,
-) -> Result<Vec<Vec<u8>>, Error> {
+) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
     let input = input.canonicalize()
         .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
 
@@ -146,11 +146,11 @@ fn to_png(
         .build()
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
-    let bytes = world
+    let compiled = world
         .compile(Some("png"), ppi, &Vec::new(), false, render_bleed)
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
-    Ok(bytes)
+    Ok(compiled)
 }
 
 fn to_pdf(
@@ -163,7 +163,7 @@ fn to_pdf(
     pretty: bool,
     sys_inputs: HashMap<String, String>,
     pdf_standards: Vec<String>,
-) -> Result<Vec<Vec<u8>>, Error> {
+) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
     let input = input.canonicalize()
         .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
 
@@ -217,11 +217,11 @@ fn to_pdf(
         }
     }
 
-    let pdf_bytes = world
+    let compiled = world
         .compile(Some("pdf"), None, &pdf_standards_vec, pretty, true)
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
-    Ok(pdf_bytes)
+    Ok(compiled)
 }
 
 fn query(
