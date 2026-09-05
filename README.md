@@ -314,8 +314,10 @@ Typst::clear_font_cache
 ```
 
 Directories passed as `font_paths` are exempt: they are rescanned on every
-compile, because `Typst::Pdf.from_s` writes the fonts you hand it into a fresh
-temporary directory each time.
+compile, because `from_s` writes the fonts you hand it into a fresh temporary
+directory each time. It only puts that directory on the font path when you
+actually pass `fonts:`, so a `body:` or `zip:` compile without them is as fast
+as any other.
 
 ## Contributors & Acknowledgements
 typst-rb is based on [typst-py](https://github.com/messense/typst-py) by [messense](https://github.com/messense)\

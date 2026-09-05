@@ -36,16 +36,22 @@ module Typst
         File.binwrite(tmp_dep_file, dep_source)
       end
 
-      relative_font_path = Pathname.new(tmp_dir).join("fonts")
-      relative_font_path.mkpath
-      fonts.each do |font_name, font_bytes|
-        tmp_font_file = relative_font_path.join(font_name)
-        File.binwrite(tmp_font_file, font_bytes)
-      end
-
       options[:file] = tmp_main_file
       options[:root] = tmp_dir
-      options[:font_paths] = [relative_font_path]
+
+      # The temporary directory is ours, but the font paths are the caller's.
+      # We only join them when there is something to find there: an empty
+      # directory on the font path still costs a scan per compile, and a compile
+      # with no font paths at all reuses the process-wide font store.
+      unless fonts.empty?
+        tmp_font_path = Pathname.new(tmp_dir).join("fonts")
+        tmp_font_path.mkpath
+        fonts.each do |font_name, font_bytes|
+          File.binwrite(tmp_font_path.join(font_name), font_bytes)
+        end
+
+        options[:font_paths] = (options[:font_paths] || []) + [tmp_font_path]
+      end
 
       blk.call(options)
     end

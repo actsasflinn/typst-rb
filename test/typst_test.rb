@@ -230,6 +230,41 @@ class TypstTest < Test::Unit::TestCase
     assert_equal([], with_font.warnings)
   end
 
+  # from_s and from_zip own the main file and the root of the temporary
+  # directory they build, but not the font paths: those belong to the caller and
+  # have to survive whatever `fonts:` writes into that directory.
+  def test_from_s_keeps_the_font_paths_it_was_given
+    body = %{#set text(12pt, font: "Fasthand")\n= Heading}
+    font_path = "fonts/Fasthand/Release/ttf"
+
+    assert_equal([], Typst::Pdf.from_s(body, font_paths: [font_path]).compiled.warnings)
+    assert_equal([], Typst(body: body, font_paths: [font_path]).compile(:pdf).warnings)
+    assert_equal([], Typst(body: body).with_font_paths([font_path]).compile(:pdf).warnings)
+  end
+
+  def test_from_zip_keeps_the_font_paths_it_was_given
+    font_path = "fonts/Fasthand/Release/ttf"
+
+    assert_equal([], Typst::Pdf.from_zip("no_fonts.zip", font_paths: [font_path]).compiled.warnings)
+    assert_equal([], Typst(zip: "no_fonts.zip", font_paths: [font_path]).compile(:pdf).warnings)
+  end
+
+  # And the other direction: a font handed to `fonts:` still has to be found
+  # when the caller supplies font paths of its own.
+  def test_from_s_keeps_written_fonts_when_font_paths_are_also_given
+    font_bytes = File.binread("fonts/Fasthand/Release/ttf/Fasthand-Regular.ttf")
+
+    Dir.mktmpdir do |unrelated|
+      document = Typst::Pdf.from_s(
+        %{#set text(12pt, font: "Fasthand")\n= Heading},
+        font_paths: [unrelated],
+        fonts: { "Fasthand-Regular.ttf" => font_bytes }
+      )
+
+      assert_equal([], document.compiled.warnings)
+    end
+  end
+
   # The system and embedded fonts are discovered once per process, but the
   # directories in font_paths are rescanned on every compile: they are often a
   # temporary directory whose contents differ from one call to the next.
