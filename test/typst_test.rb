@@ -335,4 +335,36 @@ class TypstTest < Test::Unit::TestCase
 
     assert_includes(processor.string, "Flux capacitor")
   end
+
+  # Compiling must not hold the GVL: two Ruby threads inside the compiler at
+  # the same time have to actually overlap. While the GVL is held the second
+  # thread cannot enter until the first one returns, so the two intervals come
+  # out strictly disjoint. Overlap is an ordering fact, not a timing threshold
+  # - a loaded machine only makes the overlap larger. The span is taken around
+  # the extension call alone, because the Ruby-side setup does file I/O that
+  # releases the GVL on its own and would mask a blocking compile.
+  def test_compiling_releases_the_gvl
+    Dir.mktmpdir do |dir|
+      main = File.join(dir, "main.typ")
+      File.write(main, %{#set page(width: 210mm, height: 297mm)\n} +
+                       %{#table(columns: 4, ..range(0, 2000).map(i => [Zeile #i]))})
+      args = Typst::Pdf.new(file: main, root: dir).typst_pdf_args
+
+      spans = 2.times.map do
+        Thread.new do
+          start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          Typst::_to_pdf(*args)
+          start..Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        end
+      end.map(&:value)
+
+      a, b = spans.sort_by(&:begin)
+      overlap = [a.end, b.end].min - b.begin
+      shorter = spans.map { |s| s.end - s.begin }.min
+
+      assert_operator(overlap, :>, shorter / 2,
+        "compiles did not overlap (%.3fs of %.3fs) - the GVL is being held" %
+          [overlap, shorter])
+    end
+  end
 end

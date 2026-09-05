@@ -256,12 +256,51 @@ Typst("test/test.typ").query("heading", format: "yaml").to_s
 # => "- func: heading\n  level: 1\n  depth: 1\n  offset: 0\n  numbering: null\n  supplement:\n    ...
 ```
 
+### Threads and concurrency
+
+Compiling releases Ruby's global VM lock, so several threads can compile at the
+same time and genuinely use several cores.
+
+```ruby
+docs = invoices.map { |invoice| Thread.new { Typst(body: invoice).compile(:pdf) } }.map(&:value)
+```
+
+Eight threads compiling the same document, measured on a 24-core machine:
+
+| threads | documents/second | cores busy |
+|--------:|-----------------:|-----------:|
+|       1 |              9.9 |       1.00 |
+|       8 |             36.0 |       7.65 |
+
+That is throughput across documents, not speed within one. typst parallelizes
+page runs, so a document with a single page layout is one run and stays on one
+core no matter how many threads it is given.
+
+Threads share the compilation cache and the font discovery. Compiling different
+sources, with different `sys_inputs`, font paths and roots, at the same time is
+safe.
+
+Two things to know:
+
+* A compile cannot be interrupted. `Thread#kill` and `Ctrl-C` take effect once
+  it returns.
+* Package storage is not safe to populate concurrently. Threads that need the
+  same not-yet-cached package each download their own copy and untar it
+  straight into the same directory, over each other; on Windows that fails
+  outright rather than clobbering. Compile once to warm the cache before
+  fanning out. Reading a package already on disk from many threads is safe.
+
 ### clear the compilation cache
 ```ruby
 # Evict all entries whose age is larger than or equal to `max_age`
 max_age = 10
 Typst::clear_cache(max_age)
 ```
+
+`clear_cache` takes the cache's write lock, so calling it in a loop while other
+threads compile will starve them. Measured with four threads compiling and one
+evicting as fast as it could, the compiles took 400 times longer. Call it
+between batches of documents, not between documents.
 
 ## Contributors & Acknowledgements
 typst-rb is based on [typst-py](https://github.com/messense/typst-py) by [messense](https://github.com/messense)\
