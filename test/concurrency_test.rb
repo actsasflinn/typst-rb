@@ -194,6 +194,49 @@ class ConcurrencyTest < Test::Unit::TestCase
     assert_operator(evictions, :>, 0, "the evictor never ran, so nothing was raced")
   end
 
+  # Typst.clear_font_cache drops the shared font stores while other threads are
+  # compiling against them. An in-flight compile holds its own Arc, so it must
+  # finish against the store it started with; the next one rebuilds.
+  #
+  # The clears are throttled the same way, because an unthrottled loop means
+  # every compile rescans the system font directories and the test takes
+  # minutes. ignore_system_fonts is off here on purpose: the scan is the part
+  # being invalidated.
+  def test_clear_font_cache_during_concurrent_compiles
+    documents = 0
+    clears = 0
+    counter = Mutex.new
+    done = false
+
+    workers = 4.times.map do |i|
+      Thread.new do
+        5.times do
+          document = Typst(body: report("Doc #{i}")).compile(:pdf).document
+          assert(document.start_with?("%PDF"))
+          counter.synchronize { documents += 1 }
+        end
+      end
+    end
+
+    clearer = Thread.new do
+      until done
+        Typst.clear_font_cache
+        clears += 1
+        sleep(0.05)
+      end
+    end
+
+    begin
+      workers.each(&:join)
+    ensure
+      done = true
+      clearer.join
+    end
+
+    assert_equal(20, documents)
+    assert_operator(clears, :>, 0, "the cache was never cleared, so nothing was raced")
+  end
+
   # Package storage is shared across threads, and what this test covers is the
   # warm cache: concurrent reads of a package already on disk, which is the
   # common case. The serial compile below is what makes it warm - on a fresh

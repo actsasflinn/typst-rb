@@ -1,4 +1,5 @@
 require "test/unit"
+require "fileutils"
 require_relative "../lib/typst"
 
 $VERBOSE = false
@@ -227,6 +228,22 @@ class TypstTest < Test::Unit::TestCase
     with_font = Typst("test.typ", font_paths: ["fonts/Fasthand/Release/ttf"]).compile(:pdf)
 
     assert_equal([], with_font.warnings)
+  end
+
+  # The system and embedded fonts are discovered once per process, but the
+  # directories in font_paths are rescanned on every compile: they are often a
+  # temporary directory whose contents differ from one call to the next.
+  def test_font_paths_are_rescanned_on_every_compile
+    Dir.mktmpdir do |font_dir|
+      without_font = Typst("test.typ", font_paths: [font_dir]).compile(:pdf)
+
+      assert(without_font.warnings.first.include?("unknown font family"))
+
+      FileUtils.cp("fonts/Fasthand/Release/ttf/Fasthand-Regular.ttf", font_dir)
+      with_font = Typst("test.typ", font_paths: [font_dir]).compile(:pdf)
+
+      assert_equal([], with_font.warnings)
+    end
   end
 
   def test_warnings_are_returned_for_every_format

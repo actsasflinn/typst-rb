@@ -269,16 +269,16 @@ Eight threads compiling the same document, measured on a 24-core machine:
 
 | threads | documents/second | cores busy |
 |--------:|-----------------:|-----------:|
-|       1 |              9.9 |       1.00 |
-|       8 |             36.0 |       7.65 |
+|       1 |            1062 |       1.36 |
+|       8 |            6613 |      10.17 |
 
 That is throughput across documents, not speed within one. typst parallelizes
-page runs, so a document with a single page layout is one run and stays on one
-core no matter how many threads it is given.
+page runs, so a document with a single page layout is one run and gains almost
+nothing from the threads it is given.
 
-Threads share the compilation cache and the font discovery. Compiling different
-sources, with different `sys_inputs`, font paths and roots, at the same time is
-safe.
+Threads share the compilation cache and the discovered fonts. Compiling
+different sources, with different `sys_inputs`, font paths and roots, at the
+same time is safe.
 
 Two things to know:
 
@@ -301,6 +301,21 @@ Typst::clear_cache(max_age)
 threads compile will starve them. Measured with four threads compiling and one
 evicting as fast as it could, the compiles took 400 times longer. Call it
 between batches of documents, not between documents.
+
+### fonts are discovered once
+
+Walking the system font directories takes around 95 ms, which for a small
+document is far longer than the compile itself. It happens on the first compile
+that needs it and the result is reused for the rest of the process, so a font
+installed or removed later stays invisible until you say otherwise:
+
+```ruby
+Typst::clear_font_cache
+```
+
+Directories passed as `font_paths` are exempt: they are rescanned on every
+compile, because `Typst::Pdf.from_s` writes the fonts you hand it into a fresh
+temporary directory each time.
 
 ## Contributors & Acknowledgements
 typst-rb is based on [typst-py](https://github.com/messense/typst-py) by [messense](https://github.com/messense)\
