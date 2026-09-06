@@ -276,6 +276,12 @@ Typst::clear_cache(max_age)
 
 A new experimental `concurrent` flag is added to work around Ruby's global VM lock and speed things up for batch workloads.
 
+Set the option globally
+```ruby
+Typst.concurrent = true
+```
+
+Or set the option per call
 ```ruby
 Typst(body: invoice, concurrent: true)
 ```
