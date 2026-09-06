@@ -70,7 +70,7 @@ fn to_html(
         .build()
         .map_err(|msg| msg.to_string())?;
 
-    let compiled = world
+    let (pages, warnings) = world
         .compile(Some("html"), None, &Vec::new(), true, pretty, render_bleed)
         .map_err(|msg| msg.to_string())?;
 
@@ -138,7 +138,7 @@ fn to_svg(
         .build()
         .map_err(|msg| msg.to_string())?;
 
-    let compiled = world
+    let (pages, warnings) = world
         .compile(Some("svg"), None, &Vec::new(), true, pretty, render_bleed)
         .map_err(|msg| msg.to_string())?;
 
@@ -206,7 +206,7 @@ fn to_png(
         .build()
         .map_err(|msg| msg.to_string())?;
 
-    let compiled = world
+    let (pages, warnings) = world
         .compile(Some("png"), ppi, &Vec::new(), true, false, render_bleed)
         .map_err(|msg| msg.to_string())?;
 
@@ -317,16 +317,13 @@ fn to_pdf(
 
         for (standard, name) in ACCESSIBLE {
             if pdf_standards_vec.contains(standard) {
-                return Err(magnus::Error::new(
-                    ruby.exception_arg_error(),
-                    format!("cannot disable PDF tags when exporting a {name} document"),
-                ));
+                return Err(format!("cannot disable PDF tags when exporting a {name} document").to_string());
             }
         }
     }
 
     let (pages, warnings) = world
-        .compile(Some("pdf"), None, &pdf_standards_vec, pretty, true)
+        .compile(Some("pdf"), None, &pdf_standards_vec, tagged, pretty, true)
         .map_err(|msg| msg.to_string())?;
 
     Ok((pages, warnings))
@@ -343,13 +340,14 @@ fn route_to_pdf(
     pretty: bool,
     sys_inputs: HashMap<String, String>,
     pdf_standards: Vec<String>,
+    tagged: bool,
 ) -> Result<(RArray, Vec<String>), Error> {
     let result = if concurrent {
         without_gvl(move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
-            to_pdf(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, pretty, sys_inputs, pdf_standards)
+            to_pdf(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, pretty, sys_inputs, pdf_standards, tagged)
         })
     } else {
-        to_pdf(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, pretty, sys_inputs, pdf_standards)
+        to_pdf(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, pretty, sys_inputs, pdf_standards, tagged)
     }
     .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg));
 
