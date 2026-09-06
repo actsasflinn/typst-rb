@@ -258,12 +258,20 @@ Typst("test/test.typ").query("heading", format: "yaml").to_s
 
 ### Threads and concurrency
 
-Compiling releases Ruby's global VM lock, so several threads can compile at the
-same time and genuinely use several cores.
+Compiling can release Ruby's global VM lock, so several threads compile at the
+same time and genuinely use several cores. It is off by default while it gets
+tested in the wild, so turn it on for the process or for a single document:
 
 ```ruby
+Typst.release_gvl = true
 docs = invoices.map { |invoice| Thread.new { Typst(body: invoice).compile(:pdf) } }.map(&:value)
+
+# or per document, which wins over the global setting either way
+Typst(body: invoice, release_gvl: true).compile(:pdf)
 ```
+
+Without it the extension behaves as it always did: a compile holds the GVL for
+its whole duration and other Ruby threads wait. Please report what you find.
 
 Eight threads compiling the same document, measured on a 24-core machine:
 

@@ -1,6 +1,22 @@
 use std::ffi::c_void;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
+/// Runs `f`, with the GVL released only when `release` says so.
+///
+/// Releasing is opt-in - `Typst.release_gvl`, or `release_gvl:` on a single document
+/// - while the release is being tested in the wild. Holding the GVL is what
+/// this extension always did.
+pub fn maybe_without_gvl<F, T>(release: bool, f: F) -> T
+where
+    F: FnOnce() -> T,
+{
+    if release {
+        without_gvl(f)
+    } else {
+        f()
+    }
+}
+
 /// Runs `f` with the GVL released, so other Ruby threads keep running while
 /// Typst compiles.
 ///

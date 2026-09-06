@@ -388,7 +388,7 @@ class TypstTest < Test::Unit::TestCase
     assert_includes(processor.string, "Flux capacitor")
   end
 
-  # Compiling must not hold the GVL: two Ruby threads inside the compiler at
+  # Compiling with release_gvl must not hold the GVL: two Ruby threads inside the compiler at
   # the same time have to actually overlap. While the GVL is held the second
   # thread cannot enter until the first one returns, so the two intervals come
   # out strictly disjoint. Overlap is an ordering fact, not a timing threshold
@@ -400,7 +400,7 @@ class TypstTest < Test::Unit::TestCase
       main = File.join(dir, "main.typ")
       File.write(main, %{#set page(width: 210mm, height: 297mm)\n} +
                        %{#table(columns: 4, ..range(0, 2000).map(i => [Zeile #i]))})
-      args = Typst::Pdf.new(file: main, root: dir).typst_pdf_args
+      args = Typst::Pdf.new(file: main, root: dir, release_gvl: true).typst_pdf_args
 
       spans = 2.times.map do
         Thread.new do

@@ -1,11 +1,13 @@
 require "test/unit"
 require_relative "../lib/typst"
 
-# Compiling releases the GVL (see ext/typst/src/nogvl.rs), so several Ruby
-# threads can sit inside the compiler at the same time. Everything the compiler
-# reaches for is process-global - comemo's memoization cache, the package
-# storage, font discovery - so these tests pin down what concurrent compiles are
-# allowed to do to each other.
+# Compiling releases the GVL (see ext/typst/src/nogvl.rs) when asked to, so
+# several Ruby threads can sit inside the compiler at the same time. Everything
+# the compiler reaches for is process-global - comemo's memoization cache, the
+# package storage, font discovery - so these tests pin down what concurrent
+# compiles are allowed to do to each other.
+#
+# Releasing is opt-in, so the suite turns it on for itself.
 #
 # HTML is the export format of choice here. It comes back as plain text, so a
 # marker passed in through sys_inputs can be read straight out of the result,
@@ -13,6 +15,15 @@ require_relative "../lib/typst"
 # same source differ.
 class ConcurrencyTest < Test::Unit::TestCase
   THREADS = 8
+
+  def setup
+    @release_gvl = Typst.release_gvl
+    Typst.release_gvl = true
+  end
+
+  def teardown
+    Typst.release_gvl = @release_gvl
+  end
 
   def in_threads(count = THREADS, &block)
     count.times.map { |i| Thread.new { block.call(i) } }.map(&:value)
@@ -45,11 +56,12 @@ class ConcurrencyTest < Test::Unit::TestCase
   # so that it starts on a fresh timeslice and stays well inside it: a compile
   # long enough to be preempted would be scheduled out on return and could tick
   # after the fact.
-  def test_compiling_lets_other_ruby_threads_run
+  def ticks_during_compile(release_gvl)
     Dir.mktmpdir do |directory|
       file = Pathname.new(directory).join("main.typ")
       File.write(file, report("Bericht"))
-      arguments = Typst(file: file.to_s, root: directory, ignore_system_fonts: true).typst_pdf_args
+      arguments = Typst(file: file.to_s, root: directory, ignore_system_fonts: true, release_gvl: release_gvl).typst_pdf_args
+      assert_equal(release_gvl, arguments.last)
       Typst::_to_pdf(*arguments)
 
       ticks = 0
@@ -60,14 +72,32 @@ class ConcurrencyTest < Test::Unit::TestCase
         Thread.pass
         ticks = 0
         Typst::_to_pdf(*arguments)
-        counted = ticks
+        ticks
       ensure
         running = false
         ticker.join
       end
-
-      assert_operator(counted, :>, 0, "the compile held the GVL for its whole duration")
     end
+  end
+
+  def test_compiling_lets_other_ruby_threads_run
+    assert_operator(ticks_during_compile(true), :>, 0, "the compile held the GVL for its whole duration")
+  end
+
+  # The other side of the switch, and the reason it exists: without release_gvl the
+  # extension behaves as it always did and nothing else gets a turn.
+  def test_compiling_holds_the_gvl_by_default
+    assert_equal(0, ticks_during_compile(false), "the compile released the GVL without being asked to")
+  end
+
+  def test_release_gvl_defaults_to_the_global_setting
+    Typst.release_gvl = false
+    assert_equal(false, Typst(body: "= Bericht").options[:release_gvl])
+    assert_equal(true, Typst(body: "= Bericht", release_gvl: true).options[:release_gvl])
+
+    Typst.release_gvl = true
+    assert_equal(true, Typst(body: "= Bericht").options[:release_gvl])
+    assert_equal(false, Typst(body: "= Bericht", release_gvl: false).options[:release_gvl])
   end
 
   def test_concurrent_compiles_of_one_input_match_a_serial_compile

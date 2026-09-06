@@ -38,6 +38,7 @@ module Typst
       options[:ignore_embedded_fonts] ||= false
       options[:pretty] ||= false
       options[:render_bleed] ||= false
+      options[:release_gvl] = !!options.fetch(:release_gvl, Typst.release_gvl)
     
       self.options = options
     end
@@ -51,18 +52,18 @@ module Typst
     end
 
     def typst_pretty_args
-      typst_args(typst_options.append(:pretty))
+      [*typst_args(typst_options.append(:pretty)), options[:release_gvl]]
     end
 
     def typst_pdf_args
       options[:pdf_standards] ||= []
       opts = typst_options - [:render_bleed] + [:pretty]
       args = typst_args(opts)
-      [*args, options[:pdf_standards]]
+      [*args, options[:pdf_standards], options[:release_gvl]]
     end
 
     def typst_png_args
-      [*typst_args(typst_options), options[:ppi]]
+      [*typst_args(typst_options), options[:ppi], options[:release_gvl]]
     end
 
     def self.from_s(main_source, **options)
@@ -147,14 +148,14 @@ module Typst
       query_options = { field: field, one: one, format: format }
 
       if self.options.has_key?(:file)
-        Typst::Query.new(selector, self.options[:file], **query_options.merge(self.options.slice(:root, :font_paths, :ignore_system_fonts, :ignore_embedded_fonts, :sys_inputs)))
+        Typst::Query.new(selector, self.options[:file], **query_options.merge(self.options.slice(:root, :font_paths, :ignore_system_fonts, :ignore_embedded_fonts, :sys_inputs, :release_gvl)))
       elsif self.options.has_key?(:body)
         Typst::build_world_from_s(self.options[:body], **self.options) do |opts|
-          Typst::Query.new(selector, opts[:file], **query_options.merge(opts.slice(:root, :font_paths, :ignore_system_fonts, :ignore_embedded_fonts, :sys_inputs)))
+          Typst::Query.new(selector, opts[:file], **query_options.merge(opts.slice(:root, :font_paths, :ignore_system_fonts, :ignore_embedded_fonts, :sys_inputs, :release_gvl)))
         end
       elsif self.options.has_key?(:zip)
         Typst::build_world_from_zip(self.options[:zip], **self.options) do |opts|
-          Typst::Query.new(selector, opts[:file], **query_options.merge(opts.slice(:root, :font_paths, :ignore_system_fonts, :ignore_embedded_fonts, :sys_inputs)))
+          Typst::Query.new(selector, opts[:file], **query_options.merge(opts.slice(:root, :font_paths, :ignore_system_fonts, :ignore_embedded_fonts, :sys_inputs, :release_gvl)))
         end
       else
         raise "No input given"

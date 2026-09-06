@@ -5,6 +5,19 @@ end
 module Typst
   @@formats = {}
 
+  # Compiling can release Ruby's global VM lock, so other threads keep running
+  # while Typst works. That is opt-in while it gets tested in the wild: set this
+  # for the whole process, or pass release_gvl: to a single document.
+  @@release_gvl = false
+
+  def self.release_gvl
+    @@release_gvl
+  end
+
+  def self.release_gvl=(value)
+    @@release_gvl = !!value
+  end
+
   def self.register_format(**format)
     @@formats.merge!(format)
   end

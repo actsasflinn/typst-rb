@@ -7,7 +7,7 @@ use query::{query as typst_query, QueryCommand, SerializationFormat};
 use typst::foundations::{Dict, Value};
 use typst_library::Feature;
 use typst_pdf::PdfStandard;
-use nogvl::without_gvl;
+use nogvl::maybe_without_gvl;
 use world::SystemWorld;
 
 mod compiler;
@@ -26,8 +26,9 @@ fn to_html(
     render_bleed: bool,
     pretty: bool,
     sys_inputs: HashMap<String, String>,
+    release_gvl: bool,
 ) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
-    without_gvl(move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
+    maybe_without_gvl(release_gvl, move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
         let input = input.canonicalize()
             .map_err(|err| err.to_string())?;
 
@@ -84,8 +85,9 @@ fn to_svg(
     render_bleed: bool,
     pretty: bool,
     sys_inputs: HashMap<String, String>,
+    release_gvl: bool,
 ) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
-    without_gvl(move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
+    maybe_without_gvl(release_gvl, move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
         let input = input.canonicalize()
             .map_err(|err| err.to_string())?;
 
@@ -129,8 +131,9 @@ fn to_png(
     render_bleed: bool,
     sys_inputs: HashMap<String, String>,
     ppi: Option<f32>,
+    release_gvl: bool,
 ) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
-    without_gvl(move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
+    maybe_without_gvl(release_gvl, move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
         let input = input.canonicalize()
             .map_err(|err| err.to_string())?;
 
@@ -174,8 +177,9 @@ fn to_pdf(
     pretty: bool,
     sys_inputs: HashMap<String, String>,
     pdf_standards: Vec<String>,
+    release_gvl: bool,
 ) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
-    without_gvl(move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
+    maybe_without_gvl(release_gvl, move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
         let input = input.canonicalize()
             .map_err(|err| err.to_string())?;
 
@@ -250,8 +254,9 @@ fn query(
     ignore_system_fonts: bool,
     ignore_embedded_fonts: bool,
     sys_inputs: HashMap<String, String>,
+    release_gvl: bool,
 ) -> Result<String, Error> {
-    without_gvl(move || -> Result<String, String> {
+    maybe_without_gvl(release_gvl, move || -> Result<String, String> {
         let format = match format.unwrap().to_ascii_lowercase().as_str() {
             "json" => SerializationFormat::Json,
             "yaml" => SerializationFormat::Yaml,
@@ -313,11 +318,11 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     env_logger::init();
 
     let module = ruby.define_module("Typst")?;
-    module.define_singleton_method("_to_pdf", function!(to_pdf, 8))?;
-    module.define_singleton_method("_to_svg", function!(to_svg, 8))?;
-    module.define_singleton_method("_to_png", function!(to_png, 8))?;
-    module.define_singleton_method("_to_html", function!(to_html, 8))?;
-    module.define_singleton_method("_query", function!(query, 10))?;
+    module.define_singleton_method("_to_pdf", function!(to_pdf, 9))?;
+    module.define_singleton_method("_to_svg", function!(to_svg, 9))?;
+    module.define_singleton_method("_to_png", function!(to_png, 9))?;
+    module.define_singleton_method("_to_html", function!(to_html, 9))?;
+    module.define_singleton_method("_query", function!(query, 11))?;
     module.define_singleton_method("_clear_cache", function!(clear_cache, 1))?;
     module.define_singleton_method("_clear_font_cache", function!(clear_font_cache, 0))?;
     Ok(())
