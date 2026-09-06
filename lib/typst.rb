@@ -5,6 +5,19 @@ end
 module Typst
   @@formats = {}
 
+  # Compiling can release Ruby's global VM lock, so other threads keep running
+  # while Typst works. That is opt-in while it gets tested in the wild: set this
+  # for the whole process, or pass release_gvl: to a single document.
+  @@release_gvl = false
+
+  def self.release_gvl
+    @@release_gvl
+  end
+
+  def self.release_gvl=(value)
+    @@release_gvl = !!value
+  end
+
   def self.register_format(**format)
     @@formats.merge!(format)
   end
@@ -15,6 +28,12 @@ module Typst
 
   def self.clear_cache(max_age = 0)
     Typst::_clear_cache(max_age)
+  end
+
+  # Discards the discovered system and embedded fonts, so that the next
+  # compile picks up fonts installed or removed since the first one.
+  def self.clear_font_cache
+    Typst::_clear_font_cache
   end
 
   def self.build_world_from_s(main_source, **options, &blk)
@@ -30,16 +49,22 @@ module Typst
         File.binwrite(tmp_dep_file, dep_source)
       end
 
-      relative_font_path = Pathname.new(tmp_dir).join("fonts")
-      relative_font_path.mkpath
-      fonts.each do |font_name, font_bytes|
-        tmp_font_file = relative_font_path.join(font_name)
-        File.binwrite(tmp_font_file, font_bytes)
-      end
-
       options[:file] = tmp_main_file
       options[:root] = tmp_dir
-      options[:font_paths] = [relative_font_path]
+
+      # The temporary directory is ours, but the font paths are the caller's.
+      # We only join them when there is something to find there: an empty
+      # directory on the font path still costs a scan per compile, and a compile
+      # with no font paths at all reuses the process-wide font store.
+      unless fonts.empty?
+        tmp_font_path = Pathname.new(tmp_dir).join("fonts")
+        tmp_font_path.mkpath
+        fonts.each do |font_name, font_bytes|
+          File.binwrite(tmp_font_path.join(font_name), font_bytes)
+        end
+
+        options[:font_paths] = (options[:font_paths] || []) + [tmp_font_path]
+      end
 
       blk.call(options)
     end

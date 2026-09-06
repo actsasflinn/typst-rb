@@ -1,4 +1,5 @@
 require "test/unit"
+require "fileutils"
 require_relative "../lib/typst"
 
 $VERBOSE = false
@@ -229,6 +230,57 @@ class TypstTest < Test::Unit::TestCase
     assert_equal([], with_font.warnings)
   end
 
+  # from_s and from_zip own the main file and the root of the temporary
+  # directory they build, but not the font paths: those belong to the caller and
+  # have to survive whatever `fonts:` writes into that directory.
+  def test_from_s_keeps_the_font_paths_it_was_given
+    body = %{#set text(12pt, font: "Fasthand")\n= Heading}
+    font_path = "fonts/Fasthand/Release/ttf"
+
+    assert_equal([], Typst::Pdf.from_s(body, font_paths: [font_path]).compiled.warnings)
+    assert_equal([], Typst(body: body, font_paths: [font_path]).compile(:pdf).warnings)
+    assert_equal([], Typst(body: body).with_font_paths([font_path]).compile(:pdf).warnings)
+  end
+
+  def test_from_zip_keeps_the_font_paths_it_was_given
+    font_path = "fonts/Fasthand/Release/ttf"
+
+    assert_equal([], Typst::Pdf.from_zip("no_fonts.zip", font_paths: [font_path]).compiled.warnings)
+    assert_equal([], Typst(zip: "no_fonts.zip", font_paths: [font_path]).compile(:pdf).warnings)
+  end
+
+  # And the other direction: a font handed to `fonts:` still has to be found
+  # when the caller supplies font paths of its own.
+  def test_from_s_keeps_written_fonts_when_font_paths_are_also_given
+    font_bytes = File.binread("fonts/Fasthand/Release/ttf/Fasthand-Regular.ttf")
+
+    Dir.mktmpdir do |unrelated|
+      document = Typst::Pdf.from_s(
+        %{#set text(12pt, font: "Fasthand")\n= Heading},
+        font_paths: [unrelated],
+        fonts: { "Fasthand-Regular.ttf" => font_bytes }
+      )
+
+      assert_equal([], document.compiled.warnings)
+    end
+  end
+
+  # The system and embedded fonts are discovered once per process, but the
+  # directories in font_paths are rescanned on every compile: they are often a
+  # temporary directory whose contents differ from one call to the next.
+  def test_font_paths_are_rescanned_on_every_compile
+    Dir.mktmpdir do |font_dir|
+      without_font = Typst("test.typ", font_paths: [font_dir]).compile(:pdf)
+
+      assert(without_font.warnings.first.include?("unknown font family"))
+
+      FileUtils.cp("fonts/Fasthand/Release/ttf/Fasthand-Regular.ttf", font_dir)
+      with_font = Typst("test.typ", font_paths: [font_dir]).compile(:pdf)
+
+      assert_equal([], with_font.warnings)
+    end
+  end
+
   def test_warnings_are_returned_for_every_format
     formats = { pdf: :pdf, svg: :svg, png: :png, html_experimental: :html_experimental }
     formats.each_value do |format|
@@ -334,5 +386,37 @@ class TypstTest < Test::Unit::TestCase
     reader.pages.each{ |page| page.process_contents(processor) }
 
     assert_includes(processor.string, "Flux capacitor")
+  end
+
+  # Compiling with release_gvl must not hold the GVL: two Ruby threads inside the compiler at
+  # the same time have to actually overlap. While the GVL is held the second
+  # thread cannot enter until the first one returns, so the two intervals come
+  # out strictly disjoint. Overlap is an ordering fact, not a timing threshold
+  # - a loaded machine only makes the overlap larger. The span is taken around
+  # the extension call alone, because the Ruby-side setup does file I/O that
+  # releases the GVL on its own and would mask a blocking compile.
+  def test_compiling_releases_the_gvl
+    Dir.mktmpdir do |dir|
+      main = File.join(dir, "main.typ")
+      File.write(main, %{#set page(width: 210mm, height: 297mm)\n} +
+                       %{#table(columns: 4, ..range(0, 2000).map(i => [Zeile #i]))})
+      args = Typst::Pdf.new(file: main, root: dir, release_gvl: true).typst_pdf_args
+
+      spans = 2.times.map do
+        Thread.new do
+          start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          Typst::_to_pdf(*args)
+          start..Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        end
+      end.map(&:value)
+
+      a, b = spans.sort_by(&:begin)
+      overlap = [a.end, b.end].min - b.begin
+      shorter = spans.map { |s| s.end - s.begin }.min
+
+      assert_operator(overlap, :>, shorter / 2,
+        "compiles did not overlap (%.3fs of %.3fs) - the GVL is being held" %
+          [overlap, shorter])
+    end
   end
 end

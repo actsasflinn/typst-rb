@@ -256,12 +256,76 @@ Typst("test/test.typ").query("heading", format: "yaml").to_s
 # => "- func: heading\n  level: 1\n  depth: 1\n  offset: 0\n  numbering: null\n  supplement:\n    ...
 ```
 
+### Threads and concurrency
+
+Compiling can release Ruby's global VM lock, so several threads compile at the
+same time and genuinely use several cores. It is off by default while it gets
+tested in the wild, so turn it on for the process or for a single document:
+
+```ruby
+Typst.release_gvl = true
+docs = invoices.map { |invoice| Thread.new { Typst(body: invoice).compile(:pdf) } }.map(&:value)
+
+# or per document, which wins over the global setting either way
+Typst(body: invoice, release_gvl: true).compile(:pdf)
+```
+
+Without it the extension behaves as it always did: a compile holds the GVL for
+its whole duration and other Ruby threads wait. Please report what you find.
+
+Eight threads compiling the same document, measured on a 24-core machine:
+
+| threads | documents/second | cores busy |
+|--------:|-----------------:|-----------:|
+|       1 |            1062 |       1.36 |
+|       8 |            6613 |      10.17 |
+
+That is throughput across documents, not speed within one. typst parallelizes
+page runs, so a document with a single page layout is one run and gains almost
+nothing from the threads it is given.
+
+Threads share the compilation cache and the discovered fonts. Compiling
+different sources, with different `sys_inputs`, font paths and roots, at the
+same time is safe.
+
+Two things to know:
+
+* A compile cannot be interrupted. `Thread#kill` and `Ctrl-C` take effect once
+  it returns.
+* Package storage is not safe to populate concurrently. Threads that need the
+  same not-yet-cached package each download their own copy and untar it
+  straight into the same directory, over each other; on Windows that fails
+  outright rather than clobbering. Compile once to warm the cache before
+  fanning out. Reading a package already on disk from many threads is safe.
+
 ### clear the compilation cache
 ```ruby
 # Evict all entries whose age is larger than or equal to `max_age`
 max_age = 10
 Typst::clear_cache(max_age)
 ```
+
+`clear_cache` takes the cache's write lock, so calling it in a loop while other
+threads compile will starve them. Measured with four threads compiling and one
+evicting as fast as it could, the compiles took 400 times longer. Call it
+between batches of documents, not between documents.
+
+### fonts are discovered once
+
+Walking the system font directories takes around 95 ms, which for a small
+document is far longer than the compile itself. It happens on the first compile
+that needs it and the result is reused for the rest of the process, so a font
+installed or removed later stays invisible until you say otherwise:
+
+```ruby
+Typst::clear_font_cache
+```
+
+Directories passed as `font_paths` are exempt: they are rescanned on every
+compile, because `from_s` writes the fonts you hand it into a fresh temporary
+directory each time. It only puts that directory on the font path when you
+actually pass `fonts:`, so a `body:` or `zip:` compile without them is as fast
+as any other.
 
 ## Contributors & Acknowledgements
 typst-rb is based on [typst-py](https://github.com/messense/typst-py) by [messense](https://github.com/messense)\
