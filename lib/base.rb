@@ -38,12 +38,13 @@ module Typst
       options[:ignore_embedded_fonts] ||= false
       options[:pretty] ||= false
       options[:render_bleed] ||= false
+      options[:concurrent] ||= false
     
       self.options = options
     end
 
     def typst_options
-      [:file, :root, :font_paths, :ignore_system_fonts, :ignore_embedded_fonts, :render_bleed]
+      [:file, :root, :font_paths, :ignore_system_fonts, :ignore_embedded_fonts, :concurrent, :render_bleed]
     end
 
     def typst_args(opts)

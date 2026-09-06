@@ -7,10 +7,12 @@ use query::{query as typst_query, QueryCommand, SerializationFormat};
 use typst::foundations::{Dict, Value};
 use typst_library::Feature;
 use typst_pdf::PdfStandard;
+use nogvl::without_gvl;
 use world::SystemWorld;
 
 mod compiler;
 mod download;
+mod nogvl;
 mod query;
 mod world;
 
@@ -22,7 +24,6 @@ fn binary_pages(ruby: &Ruby, pages: Vec<Vec<u8>>) -> RArray {
 }
 
 fn to_html(
-    ruby: &Ruby,
     input: PathBuf,
     root: Option<PathBuf>,
     font_paths: Vec<PathBuf>,
@@ -31,13 +32,13 @@ fn to_html(
     render_bleed: bool,
     pretty: bool,
     sys_inputs: HashMap<String, String>,
-) -> Result<(RArray, Vec<String>), Error> {
+) -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
     let input = input.canonicalize()
-        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
+        .map_err(|err| err.to_string())?;
 
     let root = if let Some(root) = root {
         root.canonicalize()
-            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
+        .map_err(|err| err.to_string())?
     } else if let Some(dir) = input.parent() {
         dir.into()
     } else {
@@ -67,17 +68,43 @@ fn to_html(
         .ignore_system_fonts(ignore_system_fonts)
         .ignore_embedded_fonts(ignore_embedded_fonts)
         .build()
-        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
+        .map_err(|msg| msg.to_string())?;
 
     let (pages, warnings) = world
         .compile(Some("html"), None, &Vec::new(), pretty, render_bleed)
-        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
+        .map_err(|msg| msg.to_string())?;
 
-    Ok((binary_pages(ruby, pages), warnings))
+    Ok((pages, warnings))
+}
+
+fn route_to_html(
+    ruby: &Ruby,
+    input: PathBuf,
+    root: Option<PathBuf>,
+    font_paths: Vec<PathBuf>,
+    ignore_system_fonts: bool,
+    ignore_embedded_fonts: bool,
+    concurrent: bool,
+    render_bleed: bool,
+    pretty: bool,
+    sys_inputs: HashMap<String, String>,
+) -> Result<(RArray, Vec<String>), Error> {
+    let result = if concurrent {
+        without_gvl(move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
+            to_html(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, pretty, sys_inputs)
+        })
+    } else {
+        to_html(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, pretty, sys_inputs)
+    }
+    .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg));
+
+    match result {
+        Ok((pages, warnings)) => Ok((binary_pages(ruby, pages), warnings)),
+        Err(msg) => Err(magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))
+    }
 }
 
 fn to_svg(
-    ruby: &Ruby,
     input: PathBuf,
     root: Option<PathBuf>,
     font_paths: Vec<PathBuf>,
@@ -86,13 +113,13 @@ fn to_svg(
     render_bleed: bool,
     pretty: bool,
     sys_inputs: HashMap<String, String>,
-) -> Result<(RArray, Vec<String>), Error> {
+) -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
     let input = input.canonicalize()
-        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
+        .map_err(|msg| msg.to_string())?;
 
     let root = if let Some(root) = root {
         root.canonicalize()
-            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
+            .map_err(|msg| msg.to_string())?
     } else if let Some(dir) = input.parent() {
         dir.into()
     } else {
@@ -109,17 +136,43 @@ fn to_svg(
         .ignore_system_fonts(ignore_system_fonts)
         .ignore_embedded_fonts(ignore_embedded_fonts)
         .build()
-        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
+        .map_err(|msg| msg.to_string())?;
 
     let (pages, warnings) = world
         .compile(Some("svg"), None, &Vec::new(), pretty, render_bleed)
-        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
+        .map_err(|msg| msg.to_string())?;
 
-    Ok((binary_pages(ruby, pages), warnings))
+    Ok((pages, warnings))
+}
+
+fn route_to_svg(
+    ruby: &Ruby,
+    input: PathBuf,
+    root: Option<PathBuf>,
+    font_paths: Vec<PathBuf>,
+    ignore_system_fonts: bool,
+    ignore_embedded_fonts: bool,
+    concurrent: bool,
+    render_bleed: bool,
+    pretty: bool,
+    sys_inputs: HashMap<String, String>,
+) -> Result<(RArray, Vec<String>), Error> {
+    let result = if concurrent {
+        without_gvl(move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
+            to_svg(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, pretty, sys_inputs)
+        })
+    } else {
+        to_svg(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, pretty, sys_inputs)
+    }
+    .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg));
+
+    match result {
+        Ok((pages, warnings)) => Ok((binary_pages(ruby, pages), warnings)),
+        Err(msg) => Err(magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))
+    }
 }
 
 fn to_png(
-    ruby: &Ruby,
     input: PathBuf,
     root: Option<PathBuf>,
     font_paths: Vec<PathBuf>,
@@ -128,13 +181,13 @@ fn to_png(
     render_bleed: bool,
     sys_inputs: HashMap<String, String>,
     ppi: Option<f32>,
-) -> Result<(RArray, Vec<String>), Error> {
+) -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
     let input = input.canonicalize()
-        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
+        .map_err(|msg| msg.to_string())?;
 
     let root = if let Some(root) = root {
         root.canonicalize()
-            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
+            .map_err(|msg| msg.to_string())?
     } else if let Some(dir) = input.parent() {
         dir.into()
     } else {
@@ -151,17 +204,43 @@ fn to_png(
         .ignore_system_fonts(ignore_system_fonts)
         .ignore_embedded_fonts(ignore_embedded_fonts)
         .build()
-        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
+        .map_err(|msg| msg.to_string())?;
 
     let (pages, warnings) = world
         .compile(Some("png"), ppi, &Vec::new(), false, render_bleed)
-        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
+        .map_err(|msg| msg.to_string())?;
 
-    Ok((binary_pages(ruby, pages), warnings))
+    Ok((pages, warnings))
+}
+
+fn route_to_png(
+    ruby: &Ruby,
+    input: PathBuf,
+    root: Option<PathBuf>,
+    font_paths: Vec<PathBuf>,
+    ignore_system_fonts: bool,
+    ignore_embedded_fonts: bool,
+    concurrent: bool,
+    render_bleed: bool,
+    sys_inputs: HashMap<String, String>,
+    ppi: Option<f32>,
+) -> Result<(RArray, Vec<String>), Error> {
+    let result = if concurrent {
+        without_gvl(move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
+            to_png(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, sys_inputs, ppi)
+        })
+    } else {
+        to_png(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, sys_inputs, ppi)
+    }
+    .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg));
+
+    match result {
+        Ok((pages, warnings)) => Ok((binary_pages(ruby, pages), warnings)),
+        Err(msg) => Err(magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))
+    }
 }
 
 fn to_pdf(
-    ruby: &Ruby,
     input: PathBuf,
     root: Option<PathBuf>,
     font_paths: Vec<PathBuf>,
@@ -170,13 +249,13 @@ fn to_pdf(
     pretty: bool,
     sys_inputs: HashMap<String, String>,
     pdf_standards: Vec<String>,
-) -> Result<(RArray, Vec<String>), Error> {
+) -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
     let input = input.canonicalize()
-        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
+        .map_err(|msg| msg.to_string())?;
 
     let root = if let Some(root) = root {
         root.canonicalize()
-            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
+            .map_err(|msg| msg.to_string())?
     } else if let Some(dir) = input.parent() {
         dir.into()
     } else {
@@ -193,7 +272,7 @@ fn to_pdf(
         .ignore_system_fonts(ignore_system_fonts)
         .ignore_embedded_fonts(ignore_embedded_fonts)
         .build()
-        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
+        .map_err(|msg| msg.to_string())?;
 
     let pdf_standards_lookup: HashMap::<&str, PdfStandard> = HashMap::from([
         ("1.4", PdfStandard::V_1_4),
@@ -220,19 +299,45 @@ fn to_pdf(
         let result = pdf_standards_lookup.get(pdf_standard.as_str());
         match result {
             Some(value) => pdf_standards_vec.push(*value),
-            _ => return Err(magnus::Error::new(ruby.exception_arg_error(), "Unknown PdfStandard")),
+            _ => return Err("Unknown PdfStandard".to_string()),
         }
     }
 
     let (pages, warnings) = world
         .compile(Some("pdf"), None, &pdf_standards_vec, pretty, true)
-        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
+        .map_err(|msg| msg.to_string())?;
 
-    Ok((binary_pages(ruby, pages), warnings))
+    Ok((pages, warnings))
+}
+
+fn route_to_pdf(
+    ruby: &Ruby,
+    input: PathBuf,
+    root: Option<PathBuf>,
+    font_paths: Vec<PathBuf>,
+    ignore_system_fonts: bool,
+    ignore_embedded_fonts: bool,
+    concurrent: bool,
+    pretty: bool,
+    sys_inputs: HashMap<String, String>,
+    pdf_standards: Vec<String>,
+) -> Result<(RArray, Vec<String>), Error> {
+    let result = if concurrent {
+        without_gvl(move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
+            to_pdf(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, pretty, sys_inputs, pdf_standards)
+        })
+    } else {
+        to_pdf(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, pretty, sys_inputs, pdf_standards)
+    }
+    .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg));
+
+    match result {
+        Ok((pages, warnings)) => Ok((binary_pages(ruby, pages), warnings)),
+        Err(msg) => Err(magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))
+    }
 }
 
 fn query(
-    ruby: &Ruby,
     selector: String,
     field: Option<String>,
     one: bool,
@@ -243,19 +348,19 @@ fn query(
     ignore_system_fonts: bool,
     ignore_embedded_fonts: bool,
     sys_inputs: HashMap<String, String>,
-) -> Result<String, Error> {
+) -> Result<String, String> {
     let format = match format.unwrap().to_ascii_lowercase().as_str() {
         "json" => SerializationFormat::Json,
         "yaml" => SerializationFormat::Yaml,
-        _ => return Err(magnus::Error::new(ruby.exception_arg_error(), "unsupported serialization format"))?,
+        _ => return Err("unsupported serialization format".to_string()),
     };
 
     let input = input.canonicalize()
-        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
+        .map_err(|msg| msg.to_string())?;
 
     let root = if let Some(root) = root {
         root.canonicalize()
-            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
+            .map_err(|msg| msg.to_string())?
     } else if let Some(dir) = input.parent() {
         dir.into()
     } else {
@@ -272,7 +377,7 @@ fn query(
     .ignore_system_fonts(ignore_system_fonts)
     .ignore_embedded_fonts(ignore_embedded_fonts)
     .build()
-    .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
+    .map_err(|msg| msg.to_string())?;
 
     let result = typst_query(
         &mut world,
@@ -286,8 +391,32 @@ fn query(
 
     match result {
         Ok(data) => Ok(data),
-        Err(msg) => Err(magnus::Error::new(ruby.exception_arg_error(), msg.to_string())),
+        Err(msg) => return Err(msg.to_string()),
     }
+}
+
+fn route_query(
+    ruby: &Ruby,
+    selector: String,
+    field: Option<String>,
+    one: bool,
+    format: Option<String>,
+    input: PathBuf,
+    root: Option<PathBuf>,
+    font_paths: Vec<PathBuf>,
+    ignore_system_fonts: bool,
+    ignore_embedded_fonts: bool,
+    concurrent: bool,
+    sys_inputs: HashMap<String, String>,
+) -> Result<String, Error> {
+    if concurrent {
+        without_gvl(move || -> Result<String, String> {
+            query(selector, field, one, format, input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, sys_inputs)
+        })
+    } else {
+        query(selector, field, one, format, input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, sys_inputs)
+    }
+    .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg))
 }
 
 fn clear_cache(_ruby: &Ruby, max_age: usize) {
@@ -303,11 +432,11 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     env_logger::init();
 
     let module = ruby.define_module("Typst")?;
-    module.define_singleton_method("_to_pdf", function!(to_pdf, 8))?;
-    module.define_singleton_method("_to_svg", function!(to_svg, 8))?;
-    module.define_singleton_method("_to_png", function!(to_png, 8))?;
-    module.define_singleton_method("_to_html", function!(to_html, 8))?;
-    module.define_singleton_method("_query", function!(query, 10))?;
+    module.define_singleton_method("_to_pdf", function!(route_to_pdf, 10))?;
+    module.define_singleton_method("_to_svg", function!(route_to_svg, 9))?;
+    module.define_singleton_method("_to_png", function!(route_to_png, 9))?;
+    module.define_singleton_method("_to_html", function!(route_to_html, 9))?;
+    module.define_singleton_method("_query", function!(route_query, 11))?;
     module.define_singleton_method("_clear_cache", function!(clear_cache, 1))?;
     module.define_singleton_method("_clear_font_cache", function!(clear_font_cache, 0))?;
     Ok(())
