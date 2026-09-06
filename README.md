@@ -282,6 +282,7 @@ Set the option globally
 Typst.concurrent = true
 ```
 
+Or set the option per call
 ```ruby
 Typst(body: invoice, concurrent: true)
 ```
