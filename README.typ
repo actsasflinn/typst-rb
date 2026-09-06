@@ -270,6 +270,55 @@ max_age = 10
 Typst::clear_cache(max_age)
 ```
 
+=== Experimental
+
+==== Threads and concurrency
+
+A new experimental `concurrent` flag is added to work around Ruby's global VM lock and speed things up for batch workloads.
+
+```ruby
+Typst(body: invoice, concurrent: true)
+```
+
+Compiling releases Ruby's global VM lock, so several threads can compile at the
+same time and genuinely use several cores.
+
+```ruby
+docs = invoices.map { |invoice| Thread.new { Typst(body: invoice, concurrent: true).compile(:pdf) } }.map(&:value)
+```
+
+Eight threads compiling the same document, measured on a 24-core machine:
+
+#table(
+  columns: 3,
+  align: (right, right, right),
+  table.header([threads], [documents/second], [cores busy]),
+  [1], [9.9], [1.00],
+  [8], [36.0], [7.65],
+)
+
+That is throughput across documents, not speed within one. typst parallelizes
+page runs, so a document with a single page layout is one run and stays on one
+core no matter how many threads it is given.
+
+Threads share the compilation cache and the font discovery. Compiling different
+sources, with different `sys_inputs`, font paths and roots, at the same time is
+safe.
+
+Three things to know:
+
+- A compile cannot be interrupted. `Thread#kill` and `Ctrl-C` take effect once
+  it returns.
+- Package storage is not safe to populate concurrently. Threads that need the
+  same not-yet-cached package each download their own copy and untar it
+  straight into the same directory, over each other; on Windows that fails
+  outright rather than clobbering. Compile once to warm the cache before
+  fanning out. Reading a package already on disk from many threads is safe.
+- `clear_cache` takes the cache's write lock, so calling it in a loop while other
+  threads compile will starve them. Measured with four threads compiling and one
+  evicting as fast as it could, the compiles took 400 times longer. Call it
+  between batches of documents, not between documents.
+
 == Contributors & Acknowledgements
 typst-rb is based on #link("https://github.com/messense/typst-py")[typst-py] by #link("https://github.com/messense")[messense]\
 clear_cache was contributed by #link("https://github.com/NRicciVestmark")[NRicciVestmark]\
@@ -277,6 +326,7 @@ CI improvements were contributed by #link("https://github.com/am1006")[am1006]\
 Defect resolutions by #link("https://github.com/adam12")[adam12] and #link("https://github.com/walterdavis")[walterdavis]\
 Design suggestions by #link("https://github.com/alec-c4")[alec-c4]\
 Compiler warnings were contributed by #link("https://github.com/TheSoloHacker47")[TheSoloHacker47]
+Concurrency patches were contributed by #link("https://github.com/dmke")[dmke]
 
 == License
 
