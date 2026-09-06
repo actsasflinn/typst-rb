@@ -425,10 +425,6 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     env_logger::init();
 
     let module = ruby.define_module("Typst")?;
-<<<<<<< HEAD
-
-=======
->>>>>>> vitaliiorlov-query-sys-inputs-strings
     module.define_singleton_method("_to_pdf", function!(route_to_pdf, 10))?;
     module.define_singleton_method("_to_svg", function!(route_to_svg, 9))?;
     module.define_singleton_method("_to_png", function!(route_to_png, 9))?;
