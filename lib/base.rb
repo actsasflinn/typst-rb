@@ -38,7 +38,7 @@ module Typst
       options[:ignore_embedded_fonts] ||= false
       options[:pretty] ||= false
       options[:render_bleed] ||= false
-      options[:concurrent] ||= false
+      options[:concurrent] ||= Typst.concurrent
     
       self.options = options
     end
