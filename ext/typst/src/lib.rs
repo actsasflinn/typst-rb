@@ -7,7 +7,7 @@ use query::{query as typst_query, QueryCommand, SerializationFormat};
 use typst::foundations::{Dict, Value};
 use typst_library::Feature;
 use typst_pdf::PdfStandard;
-use nogvl::without_gvl;
+use nogvl::nogvl;
 use world::SystemWorld;
 
 mod compiler;
@@ -83,9 +83,7 @@ fn route_to_html(
     sys_inputs: HashMap<String, String>,
 ) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
     if concurrent {
-        without_gvl(move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
-            to_html(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, pretty, sys_inputs)
-        })
+        nogvl(|| to_html(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, pretty, sys_inputs))
     } else {
         to_html(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, pretty, sys_inputs)
     }
@@ -146,9 +144,7 @@ fn route_to_svg(
     sys_inputs: HashMap<String, String>,
 ) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
     if concurrent {
-        without_gvl(move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
-            to_svg(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, pretty, sys_inputs)
-        })
+        nogvl(|| to_svg(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, pretty, sys_inputs))
     } else {
         to_svg(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, pretty, sys_inputs)
     }
@@ -209,9 +205,7 @@ fn route_to_png(
     ppi: Option<f32>,
 ) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
     if concurrent {
-        without_gvl(move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
-            to_png(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, sys_inputs, ppi)
-        })
+        nogvl(|| to_png(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, sys_inputs, ppi))
     } else {
         to_png(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, sys_inputs, ppi)
     }
@@ -301,9 +295,7 @@ fn route_to_pdf(
     pdf_standards: Vec<String>,
 ) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
     if concurrent {
-        without_gvl(move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
-            to_pdf(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, pretty, sys_inputs, pdf_standards)
-        })
+        nogvl(|| to_pdf(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, pretty, sys_inputs, pdf_standards))
     } else {
         to_pdf(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, pretty, sys_inputs, pdf_standards)
     }
@@ -383,9 +375,7 @@ fn route_query(
     sys_inputs: HashMap<String, String>,
 ) -> Result<String, Error> {
     if concurrent {
-        without_gvl(move || -> Result<String, String> {
-            query(selector, field, one, format, input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, sys_inputs)
-        })
+        nogvl(|| query(selector, field, one, format, input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, sys_inputs))
     } else {
         query(selector, field, one, format, input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, sys_inputs)
     }
