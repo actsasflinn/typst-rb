@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    typst (0.15.1.6)
+    typst (0.15.1.7)
       rb_sys (~> 0.9, >= 0.9.128)
       rubyzip (~> 3.2)
 
@@ -41,7 +41,7 @@ PLATFORMS
 
 DEPENDENCIES
   benchmark (~> 0.5)
-  faker (~> 3.8)
+  faker (~> 3.5)
   hexapdf (~> 1.5)
   parallel (~> 2.2)
   rake
