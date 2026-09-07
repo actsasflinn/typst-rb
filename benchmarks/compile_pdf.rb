@@ -12,20 +12,24 @@ data = []
 end
 
 2.times { puts }
-puts 'Compile PDF'
+puts 'Benchmark: Compile PDF'
 
-Benchmark.benchmark(' ' * 20 + Benchmark::Tms::CAPTION, 20) do |b|
-  b.report('Compiling PDFs Sync') do
-    data.each_with_index do |name, i|
-      Typst(body: "= #{name}").compile(:pdf)
+Benchmark.benchmark(Benchmark::Tms::CAPTION, 20) do |b|
+  b.report('Compiling PDFs Processes') do
+    Parallel.map(data, in_processes: 4) do |name|
+      Typst(body: "= #{name}", concurrent: true).compile(:pdf)
     end
   end
-end
 
-Benchmark.benchmark(' ' * 20 + Benchmark::Tms::CAPTION, 20) do |b|
-  b.report('Compiling PDFs Concurrent') do
-    Parallel.map(data, in_threads: 8) do |name|
+  b.report('Compiling PDFs Threads') do
+    Parallel.map(data, in_threads: 4) do |name|
       Typst(body: "= #{name}", concurrent: true).compile(:pdf)
+    end
+  end
+
+  b.report('Compiling PDFs Single Thread (with GVL)') do
+    data.each_with_index do |name, i|
+      Typst(body: "= #{name}", concurrent: false).compile(:pdf)
     end
   end
 end
