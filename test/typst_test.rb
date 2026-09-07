@@ -400,7 +400,7 @@ class TypstTest < Test::Unit::TestCase
       main = File.join(dir, "main.typ")
       File.write(main, %{#set page(width: 210mm, height: 297mm)\n} +
                        %{#table(columns: 4, ..range(0, 2000).map(i => [Zeile #i]))})
-      args = Typst::Pdf.new(file: main, root: dir).typst_pdf_args
+      args = Typst::Pdf.new(file: main, root: dir, concurrent: false).typst_pdf_args
 
       spans = 2.times.map do
         Thread.new do
