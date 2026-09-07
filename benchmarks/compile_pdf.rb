@@ -20,3 +20,11 @@ Benchmark.benchmark(' ' * 20 + Benchmark::Tms::CAPTION, 20) do |b|
     end
   end
 end
+
+Benchmark.benchmark(' ' * 20 + Benchmark::Tms::CAPTION, 20) do |b|
+  b.report('Compiling PDFs Concurrent') do
+    data.each_with_index do |name, i|
+      Typst(body: "= #{name}", concurrent: true).compile(:pdf)
+    end
+  end
+end
