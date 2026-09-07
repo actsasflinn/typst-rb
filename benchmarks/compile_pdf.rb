@@ -53,3 +53,5 @@ Benchmark.benchmark(Benchmark::Tms::CAPTION, 20) do |b|
     end
   end
 end
+
+2.times { puts }
