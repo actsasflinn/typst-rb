@@ -26,6 +26,12 @@ module Typst
     Typst::_clear_cache(max_age)
   end
 
+  # Discards the discovered system and embedded fonts, so that the next
+  # compile picks up fonts installed or removed since the first one.
+  def self.clear_font_cache
+    Typst::_clear_font_cache
+  end
+
   def self.build_world_from_s(main_source, **options, &blk)
     dependencies = options[:dependencies] ||= {}
     fonts = options[:fonts] ||= {}
@@ -39,16 +45,18 @@ module Typst
         File.binwrite(tmp_dep_file, dep_source)
       end
 
-      relative_font_path = Pathname.new(tmp_dir).join("fonts")
-      relative_font_path.mkpath
-      fonts.each do |font_name, font_bytes|
-        tmp_font_file = relative_font_path.join(font_name)
-        File.binwrite(tmp_font_file, font_bytes)
+      unless fonts.empty?
+        relative_font_path = Pathname.new(tmp_dir).join("fonts")
+        relative_font_path.mkpath
+        fonts.each do |font_name, font_bytes|
+          tmp_font_file = relative_font_path.join(font_name)
+          File.binwrite(tmp_font_file, font_bytes)
+        end
+        options[:font_paths] = (options[:font_paths] || []) + [relative_font_path]
       end
 
       options[:file] = tmp_main_file
       options[:root] = tmp_dir
-      options[:font_paths] = [relative_font_path]
 
       blk.call(options)
     end

@@ -396,6 +396,10 @@ fn clear_cache(_ruby: &Ruby, max_age: usize) {
     comemo::evict(max_age);
 }
 
+fn clear_font_cache(_ruby: &Ruby) {
+    world::clear_font_cache();
+}
+
 #[magnus::init]
 fn init(ruby: &Ruby) -> Result<(), Error> {
     env_logger::init();
@@ -407,5 +411,6 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     module.define_singleton_method("_to_html", function!(route_to_html, 9))?;
     module.define_singleton_method("_query", function!(route_query, 11))?;
     module.define_singleton_method("_clear_cache", function!(clear_cache, 1))?;
+    module.define_singleton_method("_clear_font_cache", function!(clear_font_cache, 0))?;
     Ok(())
 }
