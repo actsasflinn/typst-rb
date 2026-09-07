@@ -3,7 +3,7 @@ $LOAD_PATH.unshift lib unless $LOAD_PATH.include?(lib)
 
 Gem::Specification.new do |s|
   s.name = "typst"
-  s.version = "0.15.1.8.pre"
+  s.version = "0.15.1.8"
   s.authors = "Flinn"
   s.email = "flinn@actsasflinn.com"
   s.files = Dir["{lib}/**/*.{rb,ttf,otf}", "ext/**/*.{rs,toml,lock,rb,ttf}"] + %w[README.md README.typ Cargo.toml Cargo.lock Rakefile LICENSE]
@@ -18,7 +18,4 @@ Gem::Specification.new do |s|
   s.add_dependency "rubyzip", "~> 3.2"
   s.add_development_dependency "hexapdf", "~> 1.5"
   s.add_development_dependency "test-unit", "~> 3.6"
-  s.add_development_dependency "benchmark", "~> 0.5"
-  s.add_development_dependency "parallel", "~> 1.28"
-  s.add_development_dependency "faker", "= 3.5.3"
 end

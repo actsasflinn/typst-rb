@@ -13,7 +13,4 @@ end
 
 group :test do
   gem 'test-unit', "~> 3.6"
-  gem 'benchmark', "~> 0.5"
-  gem 'parallel', "~> 1.28"
-  gem 'faker', "= 3.5.3"
 end
