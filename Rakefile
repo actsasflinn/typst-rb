@@ -38,6 +38,8 @@ end
 
 task 'benchmark' do |t|
   sh "bundle exec ruby benchmarks/compile_pdf.rb"
+  sh "bundle exec ruby benchmarks/compile_svg.rb"
+  sh "bundle exec ruby benchmarks/compile_png.rb"
 end
 
 task 'gem:native' do |t|
