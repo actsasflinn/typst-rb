@@ -1,4 +1,5 @@
 require "test/unit"
+require "fileutils"
 require_relative "../lib/typst"
 
 $VERBOSE = false

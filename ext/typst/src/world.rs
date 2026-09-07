@@ -7,10 +7,10 @@ use chrono::{DateTime, Datelike, FixedOffset, Local};
 use typst::diag::{FileError, FileResult, StrResult};
 use typst::foundations::{Bytes, Datetime, Dict, Duration};
 use typst::syntax::{FileId, Lines, Source, VirtualPath, VirtualRoot, RootedPath};
-use typst::text::{Font, FontBook};
+use typst::text::{Font, FontBook, FontInfo};
 use typst::utils::LazyHash;
 use typst::{Features, Library, LibraryExt, World};
-use typst_kit::fonts::{self, FontStore};
+use typst_kit::fonts::{self, FontPath, FontStore};
 use typst_kit::packages::{FsPackages, SystemPackages, UniversePackages};
 
 /// A world that provides access to the operating system.
@@ -195,7 +195,7 @@ impl SystemWorldBuilder {
     }
 
     pub fn build(self) -> StrResult<SystemWorld> {
-        let fonts = Arc::new(build_font_store(self.ignore_system_fonts, self.ignore_embedded_fonts, self.font_paths));
+        let fonts = font_store(self.ignore_system_fonts, self.ignore_embedded_fonts, self.font_paths);
 
         let package_storage = system_packages(self.package_path, self.package_cache_path);
 
@@ -217,13 +217,84 @@ impl SystemWorldBuilder {
     }
 }
 
+/// Font discovery, which is far too slow to repeat on every compile.
+///
+/// A full system font scan takes about 95 ms, which for a small document
+/// dwarfs the compilation itself. `FontStore` cannot be cloned, so the
+/// discovered fonts are kept alongside the assembled stores.
+struct FontCache {
+    /// The locations found by walking the system font directories.
+    system: Option<Arc<Vec<(PathBuf, u32, FontInfo)>>>,
+    /// The fonts shipped with typst, already parsed.
+    embedded: Option<Arc<Vec<(Font, FontInfo)>>>,
+    /// A store per combination of the two ignore flags, for compiles that
+    /// bring no font paths of their own. Sharing one keeps the fonts a
+    /// document uses loaded between compiles and hashes the book only once.
+    stores: [Option<Arc<FontStore>>; 4],
+}
+
+const EMPTY_FONT_CACHE: FontCache =
+    FontCache { system: None, embedded: None, stores: [const { None }; 4] };
+
+static FONT_CACHE: Mutex<FontCache> = Mutex::new(EMPTY_FONT_CACHE);
+
+/// Forgets everything discovered so far, so that the next compile picks up
+/// fonts installed or removed since.
+pub fn clear_font_cache() {
+    *FONT_CACHE.lock().unwrap() = EMPTY_FONT_CACHE;
+}
+
+/// Reads a cache field, filling it on a miss.
+///
+/// The lock is not held while building, so two threads missing at once both
+/// build and one result is dropped. That wastes a scan but keeps a 95 ms
+/// build off the lock.
+fn cached<T>(
+    select: impl Fn(&mut FontCache) -> &mut Option<Arc<T>>,
+    build: impl FnOnce() -> T,
+) -> Arc<T> {
+    let hit = select(&mut FONT_CACHE.lock().unwrap()).clone();
+    if let Some(value) = hit {
+        return value;
+    }
+
+    let value = Arc::new(build());
+    *select(&mut FONT_CACHE.lock().unwrap()) = Some(value.clone());
+    value
+}
+
+/// Obtains a font store for the given configuration.
+///
+/// Extra font paths are scanned on every compile. They are usually a
+/// temporary directory written by `Typst.build_world_from_s`, so their
+/// contents can change between compiles and caching on them would grow
+/// without bound.
+fn font_store(ignore_system_fonts: bool, ignore_embedded_fonts: bool, font_paths: Vec<PathBuf>) -> Arc<FontStore> {
+    if !font_paths.is_empty() {
+        return Arc::new(build_font_store(ignore_system_fonts, ignore_embedded_fonts, font_paths));
+    }
+
+    let index = usize::from(ignore_system_fonts) << 1 | usize::from(ignore_embedded_fonts);
+    cached(
+        move |cache| &mut cache.stores[index],
+        || build_font_store(ignore_system_fonts, ignore_embedded_fonts, Vec::new()),
+    )
+}
+
 fn build_font_store(ignore_system_fonts: bool, ignore_embedded_fonts: bool, font_paths: Vec<PathBuf>) -> FontStore {
     let mut fonts = FontStore::new();
     if !ignore_system_fonts {
-        fonts.extend(fonts::system());
+        let system = cached(
+            |cache| &mut cache.system,
+            || fonts::system().map(|(path, info)| (path.path, path.index, info)).collect(),
+        );
+        fonts.extend(system.iter().map(|(path, index, info)| {
+            (FontPath { path: path.clone(), index: *index }, info.clone())
+        }));
     }
     if !ignore_embedded_fonts {
-        fonts.extend(fonts::embedded());
+        let embedded = cached(|cache| &mut cache.embedded, || fonts::embedded().collect());
+        fonts.extend(embedded.iter().cloned());
     }
     for path in font_paths {
         fonts.extend(fonts::scan(&path));

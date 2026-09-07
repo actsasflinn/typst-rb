@@ -17,6 +17,12 @@ module Typst
     Typst::_clear_cache(max_age)
   end
 
+  # Discards the discovered system and embedded fonts, so that the next
+  # compile picks up fonts installed or removed since the first one.
+  def self.clear_font_cache
+    Typst::_clear_font_cache
+  end
+
   def self.build_world_from_s(main_source, **options, &blk)
     dependencies = options[:dependencies] ||= {}
     fonts = options[:fonts] ||= {}
