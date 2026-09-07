@@ -1,0 +1,33 @@
+# .github/workflows/benchmark.yml
+name: Benchmark
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        ruby: ["4.0"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+      - uses: oxidize-rb/actions/setup-ruby-and-rust@835741039e37f5bbd9a62804dc03b115739bc880 # node24 and cache v5
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+          cache-version: 2
+      - run: bundle exec rake compile
+      - run: bundle exec rake benchmark
