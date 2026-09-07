@@ -1,6 +1,7 @@
 require 'benchmark'
 require 'rubygems'
 require 'faker'
+require 'parallel'
 
 require_relative "../lib/typst"
 
@@ -23,7 +24,7 @@ end
 
 Benchmark.benchmark(' ' * 20 + Benchmark::Tms::CAPTION, 20) do |b|
   b.report('Compiling PDFs Concurrent') do
-    data.each_with_index do |name, i|
+    Parallel.map(data, in_threads: 8) do |name|
       Typst(body: "= #{name}", concurrent: true).compile(:pdf)
     end
   end
