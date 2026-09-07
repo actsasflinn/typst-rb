@@ -18,4 +18,7 @@ Gem::Specification.new do |s|
   s.add_dependency "rubyzip", "~> 3.2"
   s.add_development_dependency "hexapdf", "~> 1.5"
   s.add_development_dependency "test-unit", "~> 3.6"
+  s.add_development_dependency "benchmark", "~> 0.5"
+  s.add_development_dependency "parallel", "~> 2.2"
+  s.add_development_dependency "faker", "~> 3.8"
 end
