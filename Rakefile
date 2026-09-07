@@ -34,6 +34,10 @@ Rake::TestTask.new do |t|
   t.verbose = true
 end
 
+task 'benchmark' do |t|
+  sh "bundle exec ruby benchmarks/compile_pdf.rb"
+end
+
 task 'gem:native' do |t|
   CROSS_PLATFORMS.each do |platform|
     sh "bundle exec rb-sys-dock --platform #{platform} --build"
