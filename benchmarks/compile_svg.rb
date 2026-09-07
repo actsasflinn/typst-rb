@@ -1,3 +1,13 @@
+require 'bundler/inline'
+
+gemfile do
+  source 'https://rubygems.org'
+  gem 'benchmark'
+  gem 'faker'
+  gem 'parallel'
+  gem 'rubyzip', "~> 3.2"
+end
+
 require 'benchmark'
 require 'rubygems'
 require 'faker'
