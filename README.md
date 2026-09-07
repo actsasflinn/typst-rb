@@ -269,7 +269,8 @@ clear_cache was contributed by [NRicciVestmark](https://github.com/NRicciVestmar
 CI improvements were contributed by [am1006](https://github.com/am1006)\
 Defect resolutions by [adam12](https://github.com/adam12) and [walterdavis](https://github.com/walterdavis)\
 Design suggestions by [alec-c4](https://github.com/alec-c4)\
-Compiler warnings were contributed by [TheSoloHacker47](https://github.com/TheSoloHacker47)
+Compiler warnings were contributed by [TheSoloHacker47](https://github.com/TheSoloHacker47) \
+Font optimization patches were contributed by [dmke](https://github.com/dmke)
 
 ## License
 
