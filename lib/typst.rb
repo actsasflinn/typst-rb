@@ -30,16 +30,18 @@ module Typst
         File.binwrite(tmp_dep_file, dep_source)
       end
 
-      relative_font_path = Pathname.new(tmp_dir).join("fonts")
-      relative_font_path.mkpath
-      fonts.each do |font_name, font_bytes|
-        tmp_font_file = relative_font_path.join(font_name)
-        File.binwrite(tmp_font_file, font_bytes)
+      unless fonts.empty?
+        relative_font_path = Pathname.new(tmp_dir).join("fonts")
+        relative_font_path.mkpath
+        fonts.each do |font_name, font_bytes|
+          tmp_font_file = relative_font_path.join(font_name)
+          File.binwrite(tmp_font_file, font_bytes)
+        end
+        options[:font_paths] = (options[:font_paths] || []) + [relative_font_path]
       end
 
       options[:file] = tmp_main_file
       options[:root] = tmp_dir
-      options[:font_paths] = [relative_font_path]
 
       blk.call(options)
     end
