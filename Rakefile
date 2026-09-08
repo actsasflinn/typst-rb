@@ -37,9 +37,9 @@ Rake::TestTask.new do |t|
 end
 
 task 'benchmark' do |t|
-  sh "bundle exec ruby benchmarks/compile_pdf.rb"
-  sh "bundle exec ruby benchmarks/compile_svg.rb"
-  sh "bundle exec ruby benchmarks/compile_png.rb"
+  Dir.glob("benchmarks/*.rb").each do |b|
+    sh "bundle exec ruby #{b}"
+  end
 end
 
 task 'gem:native' do |t|
