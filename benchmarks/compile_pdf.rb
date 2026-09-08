@@ -18,30 +18,38 @@ require_relative "../lib/typst"
 data = []
 
 10_000.times do |i|
-  data << Faker::Name.name
+  data << {"name" => Faker::Name.name, "age" => rand(85)}
 end
 
+main = %{
+#let persons = json(bytes(sys.inputs.persons))
+
+#for person in persons [
+  #person.name is #person.age years old.\\
+]
+}
+
+t = Typst(body: main, concurrent: true)
+
 2.times { puts }
-puts 'Benchmark: Compile PDF'
+puts "Benchmark #{data.size}: Compile PDF (typst-rb feat/gvl branch)"
 
 Benchmark.benchmark(Benchmark::Tms::CAPTION, 20) do |b|
   b.report('Compiling PDFs Processes') do
-    Parallel.map(data, in_processes: 4) do |name|
-      Typst(body: "= #{name}", concurrent: true).compile(:pdf)
+    Parallel.map(data, in_processes: 4) do |person|
+      t.with_inputs({ "persons" => [person].to_json }).compile(:pdf)
     end
   end
 
   b.report('Compiling PDFs Threads') do
-    Parallel.map(data, in_threads: 4) do |name|
-      Typst(body: "= #{name}", concurrent: true).compile(:pdf)
+    Parallel.map(data, in_threads: 4) do |person|
+      t.with_inputs({ "persons" => [person].to_json }).compile(:pdf)
     end
   end
 
   b.report('Compiling PDFs Single Thread (with GVL)') do
-    data.each_with_index do |name, i|
-      Typst(body: "= #{name}", concurrent: false).compile(:pdf)
+    data.each do |person|
+      t.with_inputs({ "persons" => [person].to_json }).compile(:pdf)
     end
   end
 end
-
-2.times { puts }
