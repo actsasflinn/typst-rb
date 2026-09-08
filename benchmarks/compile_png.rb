@@ -17,29 +17,39 @@ require_relative "../lib/typst"
 
 data = []
 
-1_000.times do |i|
-  data << Faker::Name.name
+10_000.times do |i|
+  data << {"name" => Faker::Name.name, "age" => rand(85)}
 end
+
+main = %{
+#let persons = json(bytes(sys.inputs.persons))
+
+#for person in persons [
+  #person.name is #person.age years old.\\
+]
+}
+
+t = Typst(body: main, concurrent: true)
 
 2.times { puts }
 puts 'Benchmark: Compile PNG'
 
 Benchmark.benchmark(Benchmark::Tms::CAPTION, 20) do |b|
   b.report('Compiling PNGs Processes') do
-    Parallel.map(data, in_processes: 4) do |name|
-      Typst(body: "= #{name}", concurrent: true).compile(:png)
+    Parallel.map(data, in_processes: 4) do |person|
+      t.with_inputs({ "persons" => [person].to_json }).compile(:png)
     end
   end
 
   b.report('Compiling PNGs Threads') do
-    Parallel.map(data, in_threads: 4) do |name|
-      Typst(body: "= #{name}", concurrent: true).compile(:png)
+    Parallel.map(data, in_threads: 4) do |person|
+      t.with_inputs({ "persons" => [person].to_json }).compile(:png)
     end
   end
 
   b.report('Compiling PNGs Single Thread (with GVL)') do
-    data.each_with_index do |name, i|
-      Typst(body: "= #{name}", concurrent: false).compile(:png)
+    data.each do |person|
+      t.with_inputs({ "persons" => [person].to_json }).compile(:png)
     end
   end
 end

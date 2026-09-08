@@ -6,14 +6,14 @@ gemfile do
   gem 'faker'
   gem 'parallel'
   gem 'rubyzip', "~> 3.2"
+  gem 'typst', "= 0.15.1.8"
 end
 
 require 'benchmark'
 require 'rubygems'
 require 'faker'
 require 'parallel'
-
-require_relative "../lib/typst"
+require 'typst'
 
 data = []
 
@@ -32,26 +32,24 @@ main = %{
 t = Typst(body: main, concurrent: true)
 
 2.times { puts }
-puts 'Benchmark: Compile SVG'
+puts "Benchmark #{data.size}: Compile PDF (typst-rb 0.15.1.8 with font optimization)"
 
 Benchmark.benchmark(Benchmark::Tms::CAPTION, 20) do |b|
-  b.report('Compiling SVGs Processes') do
+  b.report('Compiling PDFs Processes') do
     Parallel.map(data, in_processes: 4) do |person|
-      t.with_inputs({ "persons" => [person].to_json }).compile(:svg)
+      t.with_inputs({ "persons" => [person].to_json }).compile(:pdf)
     end
   end
 
-  b.report('Compiling SVGs Threads') do
+  b.report('Compiling PDFs Threads') do
     Parallel.map(data, in_threads: 4) do |person|
-      t.with_inputs({ "persons" => [person].to_json }).compile(:svg)
+      t.with_inputs({ "persons" => [person].to_json }).compile(:pdf)
     end
   end
 
-  b.report('Compiling SVGs Single Thread (with GVL)') do
+  b.report('Compiling PDFs Single Thread (with GVL)') do
     data.each do |person|
-      t.with_inputs({ "persons" => [person].to_json }).compile(:svg)
+      t.with_inputs({ "persons" => [person].to_json }).compile(:pdf)
     end
   end
 end
-
-2.times { puts }
