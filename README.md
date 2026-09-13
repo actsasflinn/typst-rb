@@ -3,6 +3,17 @@
 Ruby language binding to [typst](https://github.com/typst/typst),
 a new markup-based typesetting system that is powerful and easy to learn.
 
+## Pre-release
+
+A prerelease gem is available which enables concurrent workloads reducing overall time to execute large workloads. This is achieved by releasing Ruby's GVL during typst compile and was contributed by [dmke](https://github.com/dmke).
+
+Add the following to your gemfile and `bundle install`
+```ruby
+gem 'typst', '>= 0.15.1.9.pre'
+```
+
+Read more here about how to use this [new experimental feature](https://github.com/actsasflinn/typst-rb/tree/feat/gvl-kernl32#experimental). Please experiment with this in test environments and report any issues.
+
 ## Rubygems
 
  Source and native gems are provided for the following platforms: `aarch64-linux` `aarch64-linux-musl` `arm64-darwin` `x64-mingw-ucrt` `x86_64-darwin` `x86_64-linux` `x86_64-linux-musl`. The gems are built from CI [gem-push](https://github.com/actsasflinn/typst-rb/actions/workflows/gem-push.yml) action and can be verified against SHA256SUMS published with the [release](https://github.com/actsasflinn/typst-rb/releases).
@@ -11,7 +22,7 @@ a new markup-based typesetting system that is powerful and easy to learn.
 
 Add the following to your gemfile and `bundle install`
 ```ruby
-gem 'typst', '>= 0.15.1.5'
+gem 'typst', '>= 0.15.1.8'
 ```
 or install from the command line:
 ```bash
