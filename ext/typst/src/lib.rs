@@ -1,307 +1,82 @@
-use std::path::PathBuf;
+use magnus::{function, method, prelude::*, Error, Ruby};
 
-use magnus::{function, prelude::*, Error, Ruby};
+use world::VirtualWorld;
+use formats::pdf::*;
+use formats::html::*;
+use formats::svg::*;
+use formats::png::*;
 
-use std::collections::HashMap;
-use query::{query as typst_query, QueryCommand, SerializationFormat};
-use typst::foundations::{Dict, Value};
-use typst_library::Feature;
-use typst_pdf::PdfStandard;
-use world::SystemWorld;
-
-mod compiler;
-mod download;
-mod query;
 mod world;
-
-fn to_html(
-    ruby: &Ruby,
-    input: PathBuf,
-    root: Option<PathBuf>,
-    font_paths: Vec<PathBuf>,
-    ignore_system_fonts: bool,
-    ignore_embedded_fonts: bool,
-    render_bleed: bool,
-    pretty: bool,
-    sys_inputs: HashMap<String, String>,
-) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
-    let input = input.canonicalize()
-        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
-
-    let root = if let Some(root) = root {
-        root.canonicalize()
-            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
-    } else if let Some(dir) = input.parent() {
-        dir.into()
-    } else {
-        PathBuf::new()
-    };
-
-    let mut features = Vec::new();
-    features.push(Feature::Html);
-
-    let feat = features.iter()
-    .map(|&feature|
-        match feature {
-            Feature::Html => typst::Feature::Html,
-            _ => typst::Feature::Html // TODO: fix this hack
-        }
-    )
-    .collect();
-
-    let mut world = SystemWorld::builder(root, input)
-        .inputs(Dict::from_iter(
-            sys_inputs
-                .into_iter()
-                .map(|(k, v)| (k.into(), Value::Str(v.into()))),
-        ))
-        .features(feat)
-        .font_paths(font_paths)
-        .ignore_system_fonts(ignore_system_fonts)
-        .ignore_embedded_fonts(ignore_embedded_fonts)
-        .build()
-        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
-
-    let compiled = world
-        .compile(Some("html"), None, &Vec::new(), pretty, render_bleed)
-        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
-
-    Ok(compiled)
-}
-
-fn to_svg(
-    ruby: &Ruby,
-    input: PathBuf,
-    root: Option<PathBuf>,
-    font_paths: Vec<PathBuf>,
-    ignore_system_fonts: bool,
-    ignore_embedded_fonts: bool,
-    render_bleed: bool,
-    pretty: bool,
-    sys_inputs: HashMap<String, String>,
-) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
-    let input = input.canonicalize()
-        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
-
-    let root = if let Some(root) = root {
-        root.canonicalize()
-            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
-    } else if let Some(dir) = input.parent() {
-        dir.into()
-    } else {
-        PathBuf::new()
-    };
-
-    let mut world = SystemWorld::builder(root, input)
-        .inputs(Dict::from_iter(
-            sys_inputs
-                .into_iter()
-                .map(|(k, v)| (k.into(), Value::Str(v.into()))),
-        ))
-        .font_paths(font_paths)
-        .ignore_system_fonts(ignore_system_fonts)
-        .ignore_embedded_fonts(ignore_embedded_fonts)
-        .build()
-        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
-
-    let compiled = world
-        .compile(Some("svg"), None, &Vec::new(), pretty, render_bleed)
-        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
-
-    Ok(compiled)
-}
-
-fn to_png(
-    ruby: &Ruby,
-    input: PathBuf,
-    root: Option<PathBuf>,
-    font_paths: Vec<PathBuf>,
-    ignore_system_fonts: bool,
-    ignore_embedded_fonts: bool,
-    render_bleed: bool,
-    sys_inputs: HashMap<String, String>,
-    ppi: Option<f32>,
-) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
-    let input = input.canonicalize()
-        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
-
-    let root = if let Some(root) = root {
-        root.canonicalize()
-            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
-    } else if let Some(dir) = input.parent() {
-        dir.into()
-    } else {
-        PathBuf::new()
-    };
-
-    let mut world = SystemWorld::builder(root, input)
-        .inputs(Dict::from_iter(
-            sys_inputs
-                .into_iter()
-                .map(|(k, v)| (k.into(), Value::Str(v.into()))),
-        ))
-        .font_paths(font_paths)
-        .ignore_system_fonts(ignore_system_fonts)
-        .ignore_embedded_fonts(ignore_embedded_fonts)
-        .build()
-        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
-
-    let compiled = world
-        .compile(Some("png"), ppi, &Vec::new(), false, render_bleed)
-        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
-
-    Ok(compiled)
-}
-
-fn to_pdf(
-    ruby: &Ruby,
-    input: PathBuf,
-    root: Option<PathBuf>,
-    font_paths: Vec<PathBuf>,
-    ignore_system_fonts: bool,
-    ignore_embedded_fonts: bool,
-    pretty: bool,
-    sys_inputs: HashMap<String, String>,
-    pdf_standards: Vec<String>,
-) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
-    let input = input.canonicalize()
-        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
-
-    let root = if let Some(root) = root {
-        root.canonicalize()
-            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
-    } else if let Some(dir) = input.parent() {
-        dir.into()
-    } else {
-        PathBuf::new()
-    };
-
-    let mut world = SystemWorld::builder(root, input)
-        .inputs(Dict::from_iter(
-            sys_inputs
-                .into_iter()
-                .map(|(k, v)| (k.into(), Value::Str(v.into()))),
-        ))
-        .font_paths(font_paths)
-        .ignore_system_fonts(ignore_system_fonts)
-        .ignore_embedded_fonts(ignore_embedded_fonts)
-        .build()
-        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
-
-    let pdf_standards_lookup: HashMap::<&str, PdfStandard> = HashMap::from([
-        ("1.4", PdfStandard::V_1_4),
-        ("1.5", PdfStandard::V_1_5),
-        ("1.6", PdfStandard::V_1_6),
-        ("1.7", PdfStandard::V_1_7),
-        ("2.0", PdfStandard::V_2_0),
-        ("a-1a", PdfStandard::A_1a),
-        ("a-1b", PdfStandard::A_1b),
-        ("a-2a", PdfStandard::A_2a),
-        ("a-2b", PdfStandard::A_2b),
-        ("a-2u", PdfStandard::A_2u),
-        ("a-3a", PdfStandard::A_3a),
-        ("a-3b", PdfStandard::A_3b),
-        ("a-3u", PdfStandard::A_3u),
-        ("a-4", PdfStandard::A_4),
-        ("a-4e", PdfStandard::A_4e),
-        ("a-4f", PdfStandard::A_4f),
-        ("ua-1", PdfStandard::Ua_1),
-    ]);
-
-    let mut pdf_standards_vec = Vec::<PdfStandard>::new();
-    for pdf_standard in pdf_standards.iter() {
-        let result = pdf_standards_lookup.get(pdf_standard.as_str());
-        match result {
-            Some(value) => pdf_standards_vec.push(*value),
-            _ => return Err(magnus::Error::new(ruby.exception_arg_error(), "Unknown PdfStandard")),
-        }
-    }
-
-    let compiled = world
-        .compile(Some("pdf"), None, &pdf_standards_vec, pretty, true)
-        .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
-
-    Ok(compiled)
-}
-
-fn query(
-    ruby: &Ruby,
-    selector: String,
-    field: Option<String>,
-    one: bool,
-    format: Option<String>,
-    input: PathBuf,
-    root: Option<PathBuf>,
-    font_paths: Vec<PathBuf>,
-    ignore_system_fonts: bool,
-    ignore_embedded_fonts: bool,
-    sys_inputs: HashMap<String, String>,
-) -> Result<String, Error> {
-    let format = match format.unwrap().to_ascii_lowercase().as_str() {
-        "json" => SerializationFormat::Json,
-        "yaml" => SerializationFormat::Yaml,
-        _ => return Err(magnus::Error::new(ruby.exception_arg_error(), "unsupported serialization format"))?,
-    };
-
-    let input = input.canonicalize()
-        .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
-
-    let root = if let Some(root) = root {
-        root.canonicalize()
-            .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?
-    } else if let Some(dir) = input.parent() {
-        dir.into()
-    } else {
-        PathBuf::new()
-    };
-
-    let mut world = SystemWorld::builder(root, input)
-    .inputs(Dict::from_iter(
-        sys_inputs
-            .into_iter()
-            .map(|(k, v)| (k.into(), Value::Str(v.into()))),
-    ))
-    .font_paths(font_paths)
-    .ignore_system_fonts(ignore_system_fonts)
-    .ignore_embedded_fonts(ignore_embedded_fonts)
-    .build()
-    .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
-
-    let result = typst_query(
-        &mut world,
-        &QueryCommand {
-            selector: selector.into(),
-            field: field.map(Into::into),
-            one,
-            format,
-        },
-    );
-
-    match result {
-        Ok(data) => Ok(data),
-        Err(msg) => Err(magnus::Error::new(ruby.exception_arg_error(), msg.to_string())),
-    }
-}
-
-fn clear_cache(_ruby: &Ruby, max_age: usize) {
-    comemo::evict(max_age);
-}
-
-fn clear_font_cache(_ruby: &Ruby) {
-    world::clear_font_cache();
-}
+mod nogvl;
+mod formats;
+mod query;
 
 #[magnus::init]
 fn init(ruby: &Ruby) -> Result<(), Error> {
     env_logger::init();
 
-    let module = ruby.define_module("Typst")?;
-    module.define_singleton_method("_to_pdf", function!(to_pdf, 8))?;
-    module.define_singleton_method("_to_svg", function!(to_svg, 8))?;
-    module.define_singleton_method("_to_png", function!(to_png, 8))?;
-    module.define_singleton_method("_to_html", function!(to_html, 8))?;
-    module.define_singleton_method("_query", function!(query, 10))?;
-    module.define_singleton_method("_clear_cache", function!(clear_cache, 1))?;
-    module.define_singleton_method("_clear_font_cache", function!(clear_font_cache, 0))?;
+    let typst = ruby.define_module("Typst")?;
+    typst.define_singleton_method("add_font", function!(world::add_font, 1))?;
+    typst.define_singleton_method("add_file", function!(world::add_file, 2))?;
+    typst.define_singleton_method("clear_font_cache", function!(world::clear_font_cache, 0))?;
+    typst.define_singleton_method("clear_file_cache", function!(world::clear_file_cache, 0))?;
+
+    let virtual_world = typst.define_class("VirtualWorld", ruby.class_object())?;
+    virtual_world.define_singleton_method("new", function!(VirtualWorld::new_ruby, -1))?;
+    virtual_world.define_method("to_pdf", method!(VirtualWorld::to_pdf_ruby, -1))?;
+    virtual_world.define_method("to_html", method!(VirtualWorld::to_html_ruby, -1))?;
+    virtual_world.define_method("to_svg", method!(VirtualWorld::to_svg_ruby, -1))?;
+    virtual_world.define_method("to_png", method!(VirtualWorld::to_png_ruby, -1))?;
+    virtual_world.define_method("info", method!(VirtualWorld::info, 0))?;
+    virtual_world.define_method("with_inputs", method!(VirtualWorld::with_inputs, 1))?;
+    virtual_world.define_method("query", method!(VirtualWorld::query, 4))?;
+
+    let pdf = typst.define_class("Pdf", ruby.class_object())?;
+    pdf.define_singleton_method("new", function!(Pdf::new_ruby, -1))?;
+    pdf.define_method("compiled", method!(Pdf::compiled, 0))?;
+
+    let document = typst.define_class("PdfDocument", ruby.class_object())?;
+    document.define_singleton_method("new", function!(PdfDocument::new, 2))?;
+    document.define_method("bytes", method!(PdfDocument::bytes, 0))?;
+    document.define_method("warnings", method!(PdfDocument::warnings, 0))?;
+    document.define_method("warnings?", method!(PdfDocument::has_warnings, 0))?;
+    document.define_method("write", method!(PdfDocument::write, 1))?;
+
+    let html = typst.define_class("Html", ruby.class_object())?;
+    html.define_singleton_method("new", function!(Html::new_ruby, -1))?;
+    html.define_method("compiled", method!(Html::compiled, 0))?;
+
+    let html_document = typst.define_class("HtmlExperimentalDocument", ruby.class_object())?;
+    html_document.define_singleton_method("new", function!(HtmlExperimentalDocument::new, 2))?;
+    html_document.define_method("document", method!(HtmlExperimentalDocument::document, 0))?;
+    html_document.define_method("bytes", method!(HtmlExperimentalDocument::bytes, 0))?;
+    html_document.define_method("warnings", method!(HtmlExperimentalDocument::warnings, 0))?;
+    html_document.define_method("warnings?", method!(HtmlExperimentalDocument::has_warnings, 0))?;
+    html_document.define_method("write", method!(HtmlExperimentalDocument::write, 1))?;
+
+    let svg = typst.define_class("Svg", ruby.class_object())?;
+    svg.define_singleton_method("new", function!(Svg::new_ruby, -1))?;
+    svg.define_method("compiled", method!(Svg::compiled, 0))?;
+
+    let svg_document = typst.define_class("SvgDocument", ruby.class_object())?;
+    svg_document.define_singleton_method("new", function!(SvgDocument::new, 2))?;
+    svg_document.define_method("bytes", method!(SvgDocument::bytes, 0))?;
+    svg_document.define_method("pages", method!(SvgDocument::pages, 0))?;
+    svg_document.define_method("warnings", method!(SvgDocument::warnings, 0))?;
+    svg_document.define_method("warnings?", method!(SvgDocument::has_warnings, 0))?;
+    svg_document.define_method("write", method!(SvgDocument::write, 1))?;
+
+    let png = typst.define_class("Png", ruby.class_object())?;
+    png.define_singleton_method("new", function!(Png::new_ruby, -1))?;
+    png.define_method("compiled", method!(Png::compiled, 0))?;
+
+    let png_document = typst.define_class("PngDocument", ruby.class_object())?;
+    png_document.define_singleton_method("new", function!(PngDocument::new, 2))?;
+    png_document.define_method("bytes", method!(PngDocument::bytes, 0))?;
+    png_document.define_method("pages", method!(PngDocument::pages, 0))?;
+    png_document.define_method("warnings", method!(PngDocument::warnings, 0))?;
+    png_document.define_method("warnings?", method!(PngDocument::has_warnings, 0))?;
+    png_document.define_method("write", method!(PngDocument::write, 1))?;
+
     Ok(())
 }

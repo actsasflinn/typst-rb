@@ -12,7 +12,7 @@ use typst::syntax::SyntaxMode;
 use typst::World;
 use typst_eval::eval_string;
 
-use crate::world::SystemWorld;
+use crate::world::VirtualWorld;
 
 /// Processes an input file to extract provided metadata
 #[derive(Debug, Clone)]
@@ -38,9 +38,7 @@ pub enum SerializationFormat {
 }
 
 /// Execute a query command.
-pub fn query(world: &mut SystemWorld, command: &QueryCommand) -> StrResult<String> {
-    // Reset everything and ensure that the main file is present.
-    world.reset();
+pub fn query(world: &VirtualWorld, command: &QueryCommand) -> StrResult<String> {
     world.source(world.main()).map_err(|err| err.to_string())?;
 
     let Warned { output, warnings } = typst::compile(world);

@@ -2,7 +2,7 @@ PATH
   remote: .
   specs:
     typst (0.15.1.8)
-      rb_sys (~> 0.9, >= 0.9.128)
+      rb_sys (~> 0.9, >= 0.9.130)
       rubyzip (~> 3.2)
 
 GEM
@@ -36,7 +36,7 @@ DEPENDENCIES
   hexapdf (~> 1.5)
   rake
   rake-compiler (~> 1.3, >= 1.3.1)
-  rb_sys (~> 0.9, >= 0.9.124)
+  rb_sys (~> 0.9, >= 0.9.130)
   rubyzip (~> 3.2)
   test-unit (~> 3.6)
   typst!

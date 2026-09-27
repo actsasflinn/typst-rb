@@ -21,7 +21,7 @@ filetime = "0.2.22" #
 flate2 = "1" #
 fontdb = "0.15.0" #
 log = "0.4.20" #
-magnus = { version = "0.8.2" }
+magnus = { version = "0.9.0" }
 pathdiff = "0.2"
 same-file = "1" #
 siphasher = "1.0" #
@@ -29,6 +29,7 @@ tar = "0.4" #
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
+once_cell = "1.21.4"
 typst = "0.15.1"
 typst-library  = "0.15.1"
 typst-kit = { version = "0.15.1", features = [
@@ -44,6 +45,7 @@ typst-html = "0.15.1"
 typst-render = "0.15.1"
 typst-eval = "0.15.1"
 typst-layout = "0.15.1"
+
 ureq = { version = "2", default-features = false, features = [
     "gzip",
     "socks-proxy",
@@ -52,4 +54,4 @@ walkdir = "2.4.0"
 
 # enable rb-sys feature to test against Ruby head. This is only needed if you
 # want to work with the unreleased, in-development, next version of Ruby
-rb-sys = { version = "0.9.128", default-features = false, features = ["stable-api-compiled-fallback"] }
+rb-sys = { version = "0.9.130", default-features = false, features = ["stable-api-compiled-fallback"] }
