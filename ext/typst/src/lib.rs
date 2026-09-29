@@ -64,7 +64,7 @@ fn to_html(
         .map_err(|msg| msg.to_string())?;
 
     let compiled = world
-        .compile(Some("html"), None, &Vec::new(), pretty, render_bleed)
+        .compile(Some("html"), None, &Vec::new(), true, pretty, render_bleed)
         .map_err(|msg| msg.to_string())?;
 
     Ok(compiled)
@@ -127,7 +127,7 @@ fn to_svg(
         .map_err(|msg| msg.to_string())?;
 
     let compiled = world
-        .compile(Some("svg"), None, &Vec::new(), pretty, render_bleed)
+        .compile(Some("svg"), None, &Vec::new(), true, pretty, render_bleed)
         .map_err(|msg| msg.to_string())?;
 
     Ok(compiled)
@@ -190,7 +190,7 @@ fn to_png(
         .map_err(|msg| msg.to_string())?;
 
     let compiled = world
-        .compile(Some("png"), ppi, &Vec::new(), false, render_bleed)
+        .compile(Some("png"), ppi, &Vec::new(), true, false, render_bleed)
         .map_err(|msg| msg.to_string())?;
 
     Ok(compiled)
@@ -227,6 +227,7 @@ fn to_pdf(
     pretty: bool,
     sys_inputs: HashMap<String, String>,
     pdf_standards: Vec<String>,
+    tagged: bool,
 ) -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
     let input = input.canonicalize()
         .map_err(|msg| msg.to_string())?;
@@ -281,8 +282,26 @@ fn to_pdf(
         }
     }
 
+    // These standards require a tagged PDF. Typst would still write one that
+    // claims the standard, with none of its content tagged, so refuse as the
+    // CLI does for --no-pdf-tags.
+    if !tagged {
+        const ACCESSIBLE: &[(PdfStandard, &str)] = &[
+            (PdfStandard::A_1a, "PDF/A-1a"),
+            (PdfStandard::A_2a, "PDF/A-2a"),
+            (PdfStandard::A_3a, "PDF/A-3a"),
+            (PdfStandard::Ua_1, "PDF/UA-1"),
+        ];
+
+        for (standard, name) in ACCESSIBLE {
+            if pdf_standards_vec.contains(standard) {
+                return Err(format!("cannot disable PDF tags when exporting a {name} document").to_string());
+            }
+        }
+    }
+
     let compiled = world
-        .compile(Some("pdf"), None, &pdf_standards_vec, pretty, true)
+        .compile(Some("pdf"), None, &pdf_standards_vec, tagged, pretty, true)
         .map_err(|msg| msg.to_string())?;
 
     Ok(compiled)
@@ -299,13 +318,14 @@ fn route_to_pdf(
     pretty: bool,
     sys_inputs: HashMap<String, String>,
     pdf_standards: Vec<String>,
+    tagged: bool,
 ) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
     if concurrent {
         without_gvl(move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
-            to_pdf(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, pretty, sys_inputs, pdf_standards)
+            to_pdf(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, pretty, sys_inputs, pdf_standards, tagged)
         })
     } else {
-        to_pdf(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, pretty, sys_inputs, pdf_standards)
+        to_pdf(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, pretty, sys_inputs, pdf_standards, tagged)
     }
     .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg))
 }
@@ -405,7 +425,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     env_logger::init();
 
     let module = ruby.define_module("Typst")?;
-    module.define_singleton_method("_to_pdf", function!(route_to_pdf, 9))?;
+    module.define_singleton_method("_to_pdf", function!(route_to_pdf, 10))?;
     module.define_singleton_method("_to_svg", function!(route_to_svg, 9))?;
     module.define_singleton_method("_to_png", function!(route_to_png, 9))?;
     module.define_singleton_method("_to_html", function!(route_to_html, 9))?;

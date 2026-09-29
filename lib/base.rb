@@ -63,9 +63,10 @@ module Typst
 
     def typst_pdf_args
       options[:pdf_standards] ||= []
+      options[:tagged] = true if options[:tagged].nil?
       opts = typst_options - [:render_bleed] + [:pretty]
       args = typst_args(opts)
-      [*args, options[:pdf_standards]]
+      [*args, options[:pdf_standards], options[:tagged]]
     end
 
     def typst_png_args
