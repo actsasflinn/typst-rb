@@ -1,45 +1,5 @@
-use std::collections::HashMap;
-
-use magnus::{Error, scan_args::{get_kwargs, scan_args}};
-
-use crate::world::VirtualWorld;
+use magnus::Error;
 use super::format::Format;
-
-#[magnus::wrap(class = "Typst::Html")]
-pub struct Html {
-    compiled: HtmlExperimentalDocument,
-}
-
-impl Html {
-    pub fn new(
-        text: String,
-        fonts: Option<Vec<Vec<u8>>>,
-        files: Option<HashMap<String, Vec<u8>>>,
-        sys_inputs: Option<HashMap<String, String>>,
-        pretty: Option<bool>,
-    ) -> Result<HtmlExperimentalDocument, Error> {
-        let world = VirtualWorld::new(text, fonts, files, sys_inputs);
-        world.to_html(pretty)
-    }
-    pub fn new_ruby(
-        args: &[magnus::Value],
-    ) -> Result<HtmlExperimentalDocument, Error> {
-        let args = scan_args::<_, (), (), (), _, ()>(args)?;
-        let (text,): (String,) = args.required;
-        let kw = get_kwargs::<_, (), (
-            Option<Vec<Vec<u8>>>,
-            Option<HashMap<String, Vec<u8>>>,
-            Option<HashMap<String, String>>,
-            Option<bool>,
-        ), ()>(args.keywords, &[], &["fonts", "files", "sys_inputs", "pretty"])?;
-        let (fonts, files, sys_inputs, pretty,) = kw.optional;
-
-        Self::new(text, fonts, files, sys_inputs, pretty)
-    }
-    pub fn compiled(&self) -> HtmlExperimentalDocument {
-        return self.compiled.clone();
-    }
-}
 
 #[derive(Clone)]
 #[magnus::wrap(class = "Typst::HtmlExperimentalDocument")]

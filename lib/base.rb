@@ -70,8 +70,10 @@ module Typst
         from_options = options.merge(opts)
         if from_options[:format]
           Typst::formats[from_options[:format]].new(**from_options)
+          #Typst::VirtualWorld.new(main_source, **from_options)
         else
           new(**from_options)
+          #Typst::VirtualWorld.new(main_source, **from_options)
         end
       end
     end
@@ -123,21 +125,58 @@ module Typst
     end
 
     def compile(format, **options)
-      raise "Invalid format" if Typst::formats[format].nil?
-
       options = self.options.merge(options)
 
       if options.has_key?(:file)
-        Typst::formats[format].new(**options).compiled
+        options[:body] = File.read(options[:file])
+        fn = self.options.delete(:file)
+        res = Typst::build_world_from_project(options[:file], **options) do |opts|
+          opts.delete(:file)
+          compile(format, **opts)
+        end
+        self.options[:file] = fn
+        res
       elsif options.has_key?(:body)
         Typst::build_world_from_s(self.options[:body], **options) do |opts|
-          Typst::formats[format].new(**options.merge(opts)).compiled
+          from_options = options.merge(opts).slice(
+            :fonts,
+            :font_paths,
+            :system_fonts,
+            :embedded_fonts,
+            :local_fonts,
+            :package_path,
+            :package_cache_path,
+            :files,
+            :sys_inputs)
+          
+          from_options[:system_fonts] = !opts[:ignore_system_fonts] if from_options[:system_fonts].nil?
+          from_options[:embedded_fonts] = !opts[:ignore_embedded_fonts] if from_options[:embedded_fonts].nil?
+          from_options[:fonts] = from_options[:fonts].values
+
+          t = Typst::VirtualWorld.new(options[:body], **from_options)
+
+          case format
+            when :html,:html_experimental
+              t.to_html(**from_options.slice(:pretty))
+            when :pdf
+              t.to_pdf(**from_options.slice(:pretty, :render_bleed))
+            when :png
+              t.to_png(**from_options.slice(:render_bleed, :ppi))
+            when :svg
+              t.to_svg(**from_options.slice(:pretty, :render_bleed))
+            else
+              raise "Invalid format"
+          end
         end
       elsif options.has_key?(:zip)
         main_file = options[:main_file]
-        Typst::build_world_from_zip(options[:zip], main_file, **options) do |opts|
-          Typst::formats[format].new(**options.merge(opts)).compiled
+        fn = self.options.delete(:file)
+        res = Typst::build_world_from_zip(options[:zip], main_file, **options) do |opts|
+          opts.delete(:zip)  
+          compile(format, **opts)
         end
+        self.options[:file] = fn
+        res
       else
         raise "No input given"
       end
@@ -153,6 +192,9 @@ module Typst
           Typst::Query.new(selector, opts[:file], **query_options.merge(opts.slice(:root, :font_paths, :ignore_system_fonts, :ignore_embedded_fonts, :sys_inputs)))
         end
       elsif self.options.has_key?(:zip)
+        options.delete(:file)
+        self.options.delete(:file)
+
         Typst::build_world_from_zip(self.options[:zip], **self.options) do |opts|
           Typst::Query.new(selector, opts[:file], **query_options.merge(opts.slice(:root, :font_paths, :ignore_system_fonts, :ignore_embedded_fonts, :sys_inputs)))
         end

@@ -2,88 +2,77 @@ def Typst(*options)
   Typst::Base.new(*options)
 end
 
-# module Typst
-#   @@formats = {}
+module Typst
+  @@formats = {}
 
-#   def self.register_format(**format)
-#     @@formats.merge!(format)
-#   end
+  def self.register_format(**format)
+    @@formats.merge!(format)
+  end
 
-#   def self.formats
-#     @@formats
-#   end
+  def self.formats
+    @@formats
+  end
 
-#   def self.clear_cache(max_age = 0)
-#     Typst::_clear_cache(max_age)
-#   end
+  def self.build_world_from_project(main_filename, **options, &blk)
+    files = Dir.glob(File.join(options[:root], "*"))
+    exts = [".typ", ".svg", ".png", ".json"]
+    files.filter{ |fn| exts.any?{ |ext| File.extname(fn) == ext } }.each do |fil|
+      options[:dependencies][File.basename(fil)] = File.read(fil) if File.file?(fil)
+    end
 
-#   # Discards the discovered system and embedded fonts, so that the next
-#   # compile picks up fonts installed or removed since the first one.
-#   def self.clear_font_cache
-#     Typst::_clear_font_cache
-#   end
+    options[:fonts] ||= {}
+    fonts = Dir.glob(File.join(options[:root], "fonts", "*"))
+    fonts.each do |font|
+      options[:fonts][File.basename(font)] = File.read(font) if File.file?(font)
+    end
 
-#   def self.build_world_from_s(main_source, **options, &blk)
-#     dependencies = options[:dependencies] ||= {}
-#     fonts = options[:fonts] ||= {}
+    self.build_world_from_s(File.read(main_filename), **options, &blk)
+  end
 
-#     Dir.mktmpdir do |tmp_dir|
-#       tmp_main_file = Pathname.new(tmp_dir).join("main.typ")
-#       File.write(tmp_main_file, main_source)
+  def self.build_world_from_s(main_source, **options, &blk)
+    options[:body] = main_source
+    dependencies = options[:dependencies] || {}
+    options[:dependencies] = dependencies.collect{ |k,v| [k,v.is_a?(String) ? v.bytes : v] }.to_h
 
-#       dependencies.each do |dep_name, dep_source|
-#         tmp_dep_file = Pathname.new(tmp_dir).join(dep_name)
-#         File.binwrite(tmp_dep_file, dep_source)
-#       end
+    fonts = options[:fonts] ||= {}
+    fonts.each do |font|
+      options[:fonts][File.basename(font)] = File.read(font)
+    end
 
-#       unless fonts.empty?
-#         relative_font_path = Pathname.new(tmp_dir).join("fonts")
-#         relative_font_path.mkpath
-#         fonts.each do |font_name, font_bytes|
-#           tmp_font_file = relative_font_path.join(font_name)
-#           File.binwrite(tmp_font_file, font_bytes)
-#         end
-#         options[:font_paths] = (options[:font_paths] || []) + [relative_font_path]
-#       end
+    blk.call(options)
+  end
 
-#       options[:file] = tmp_main_file
-#       options[:root] = tmp_dir
+  def self.build_world_from_zip(zip_file_path, main_file = "main.typ", **options, &blk)
+    options[:dependencies] ||= {}
+    options[:fonts] ||= {}
 
-#       blk.call(options)
-#     end
-#   end
+    Zip::File.open(zip_file_path) do |zipfile|
+      file_names = zipfile.dir.glob("*").collect{ |f| f.name }
+      case
+        when file_names.include?(main_file) then tmp_main_file = main_file
+        when file_names.include?("main.typ") then tmp_main_file = "main.typ"
+        when file_names.size == 1 then tmp_main_file = file_names.first
+        else raise "no main file found"
+      end
+      main_source = zipfile.file.read(tmp_main_file)
+      file_names.delete(tmp_main_file)
+      file_names.delete("fonts/")
 
-#   def self.build_world_from_zip(zip_file_path, main_file = "main.typ", **options, &blk)
-#     options[:dependencies] ||= {}
-#     options[:fonts] ||= {}
+      file_names.each do |dep_name|
+        options[:dependencies][dep_name] = zipfile.file.read(dep_name)
+      end
 
-#     Zip::File.open(zip_file_path) do |zipfile|
-#       file_names = zipfile.dir.glob("*").collect{ |f| f.name }
-#       case
-#         when file_names.include?(main_file) then tmp_main_file = main_file
-#         when file_names.include?("main.typ") then tmp_main_file = "main.typ"
-#         when file_names.size == 1 then tmp_main_file = file_names.first
-#         else raise "no main file found"
-#       end
-#       main_source = zipfile.file.read(tmp_main_file)
-#       file_names.delete(tmp_main_file)
-#       file_names.delete("fonts/")
+      font_file_names = zipfile.dir.glob("fonts/*").collect{ |f| f.name }
+      font_file_names.each do |font_name|
+        options[:fonts][Pathname.new(font_name).basename.to_s] = zipfile.file.read(font_name)
+      end
 
-#       file_names.each do |dep_name|
-#         options[:dependencies][dep_name] = zipfile.file.read(dep_name)
-#       end
+      #options[:main_file] = tmp_main_file
 
-#       font_file_names = zipfile.dir.glob("fonts/*").collect{ |f| f.name }
-#       font_file_names.each do |font_name|
-#         options[:fonts][Pathname.new(font_name).basename.to_s] = zipfile.file.read(font_name)
-#       end
-
-#       options[:main_file] = tmp_main_file
-
-#       build_world_from_s(main_source, **options, &blk)
-#     end
-#   end
-# end
+      build_world_from_s(main_source, **options, &blk)
+    end
+  end
+end
 
 require "cgi/escape"
 require "pathname"
@@ -100,10 +89,10 @@ rescue LoadError
   require_relative "typst/typst"
 end
 
-# require_relative "base"
+require_relative "base"
 # require_relative "query"
 # require_relative "document"
-# require_relative "formats/pdf"
-# require_relative "formats/svg"
-# require_relative "formats/png"
-# require_relative "formats/html_experimental"
+require_relative "formats/pdf"
+require_relative "formats/svg"
+require_relative "formats/png"
+require_relative "formats/html_experimental"

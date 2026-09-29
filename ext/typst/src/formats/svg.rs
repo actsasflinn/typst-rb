@@ -1,47 +1,4 @@
-use std::collections::HashMap;
-
-use magnus::{Error, scan_args::{get_kwargs, scan_args}};
-
-use crate::world::VirtualWorld;
 use super::format::Format;
-
-#[magnus::wrap(class = "Typst::Svg")]
-pub struct Svg {
-    compiled: SvgDocument,
-}
-
-impl Svg {
-    pub fn new(
-        text: String,
-        fonts: Option<Vec<Vec<u8>>>,
-        files: Option<HashMap<String, Vec<u8>>>,
-        sys_inputs: Option<HashMap<String, String>>,
-        pretty: Option<bool>,
-        render_bleed: Option<bool>,
-    ) -> Result<SvgDocument, Error> {
-        let world = VirtualWorld::new(text, fonts, files, sys_inputs);
-        world.to_svg(pretty, render_bleed)
-    }
-    pub fn new_ruby(
-        args: &[magnus::Value],
-    ) -> Result<SvgDocument, Error> {
-        let args = scan_args::<_, (), (), (), _, ()>(args)?;
-        let (text,): (String,) = args.required;
-        let kw = get_kwargs::<_, (), (
-            Option<Vec<Vec<u8>>>,
-            Option<HashMap<String, Vec<u8>>>,
-            Option<HashMap<String, String>>,
-            Option<bool>,
-            Option<bool>,
-        ), ()>(args.keywords, &[], &["fonts", "files", "sys_inputs", "pretty", "render_bleed"])?;
-        let (fonts, files, sys_inputs, pretty, render_bleed,) = kw.optional;
-
-        Self::new(text, fonts, files, sys_inputs, pretty, render_bleed)
-    }
-    pub fn compiled(&self) -> SvgDocument {
-        return self.compiled.clone();
-    }
-}
 
 #[derive(Clone)]
 #[magnus::wrap(class = "Typst::SvgDocument")]
