@@ -50,6 +50,33 @@ class TypstTest < Test::Unit::TestCase
     }
   end
 
+  # Typst tags PDFs by default; the tags can be most of a large document's
+  # size, so they can be turned off, as with the CLI's --no-pdf-tags.
+  def test_pdf_tagged
+    require "hexapdf"
+    tagged = Typst("test.typ").compile(:pdf).document
+    untagged = Typst("test.typ").compile(:pdf, tagged: false).document
+
+    assert(HexaPDF::Document.new(io: StringIO.open(tagged)).catalog.key?(:StructTreeRoot))
+    assert(!HexaPDF::Document.new(io: StringIO.open(untagged)).catalog.key?(:StructTreeRoot))
+    assert(untagged.bytesize < tagged.bytesize)
+
+    # nil keeps the default rather than reaching the extension as false.
+    unset = Typst("test.typ").compile(:pdf, tagged: nil).document
+    assert(HexaPDF::Document.new(io: StringIO.open(unset)).catalog.key?(:StructTreeRoot))
+  end
+
+  # PDF/A-1a, A-2a, A-3a and UA-1 require the tags. Without this check typst
+  # writes a PDF that claims the standard with none of its content tagged.
+  def test_pdf_tagged_required_by_standard
+    error = assert_raise(ArgumentError) do
+      Typst("test.typ").compile(:pdf, tagged: false, pdf_standards: ["ua-1"])
+    end
+
+    assert(error.message.include?("cannot disable PDF tags when exporting a PDF/UA-1 document"))
+    assert(Typst(body: %{= Heading}).compile(:pdf, tagged: false, pdf_standards: ["a-2b"]).document.start_with?("%PDF"))
+  end
+
   def test_png
     png72 = Typst("test.typ").compile(:png, ppi: 72.0)
     png144 = Typst("test.typ").compile(:png, ppi: 144.0)
