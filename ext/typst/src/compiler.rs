@@ -20,6 +20,7 @@ impl SystemWorld {
         format: Option<&str>,
         ppi: Option<f32>,
         pdf_standards: &[typst_pdf::PdfStandard],
+        tagged: bool,
         pretty: bool,
         render_bleed: bool,
     ) -> StrResult<(Vec<Vec<u8>>, Vec<String>)> {
@@ -50,6 +51,7 @@ impl SystemWorld {
                                 typst_pdf::PdfStandards::new(pdf_standards)
                                     .map_err(|e| eco_format!("PDF standards error: {:?}", e))
                                     .at(Span::detached()).unwrap(),
+                                tagged,
                                 pretty,
                             )?],
                             "png" => export_image(&document, ImageExportFormat::Png, ppi, pretty, render_bleed)?,
@@ -106,6 +108,7 @@ fn export_pdf(
     document: &PagedDocument,
     world: &SystemWorld,
     standards: typst_pdf::PdfStandards,
+    tagged: bool,
     pretty: bool,
 ) -> StrResult<Vec<u8>> {
     let buffer = typst_pdf::pdf(
@@ -114,6 +117,7 @@ fn export_pdf(
             ident: typst::foundations::Smart::Auto,
             timestamp: now().map(typst_pdf::Timestamp::new_utc),
             standards,
+            tagged,
             pretty,
             ..Default::default()
         },

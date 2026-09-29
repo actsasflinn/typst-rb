@@ -99,6 +99,12 @@ doc = t.compile(:pdf)
 doc = t.compile(:pdf, pdf_standards: ["2.0"])
 ```
 
+==== Compile to PDF without tags
+Typst tags PDFs by default so that screen readers and other assistive technology can read them. The tags can make up much of a large document's size; like the CLI's `--no-pdf-tags`, `tagged: false` leaves them out. The PDF/A-1a, A-2a, A-3a and UA-1 standards require tags.
+```ruby
+doc = t.compile(:pdf, tagged: false)
+```
+
 ==== Compile to SVG
 ```ruby
 doc = t.compile(:svg)
