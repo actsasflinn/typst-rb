@@ -1,14 +1,14 @@
 module Typst
   class Document
-    attr_accessor :bytes
-
     # Diagnostics the compiler emitted while *succeeding*. An unknown font
     # family is the common one: Typst substitutes another face, the document
     # generates, and nothing tells you unless you look here.
     attr_accessor :warnings
 
-    def initialize(bytes, warnings = [])
-      @bytes = bytes
+    # One binary String per page, as the extension returns them. An Array of
+    # Integers per page, what it returned before, is still accepted.
+    def initialize(pages, warnings = [])
+      @pages = binary_pages(pages)
       @warnings = warnings
     end
 
@@ -36,12 +36,34 @@ module Typst
       end
     end
 
+    # One binary (ASCII-8BIT) String per page; PDF and HTML output is a
+    # single page. Each call returns new Strings, as it did when it packed
+    # them every time. They share their bytes with the document until
+    # changed, so changing one (force_encoding, say) leaves the document as
+    # it was compiled.
     def pages
-      bytes.collect{ |page| page.pack("C*").to_s }
+      @pages.collect(&:dup)
+    end
+
+    # The pages as arrays of Integers. Prefer #pages: this makes a Ruby
+    # Integer of every byte.
+    def bytes
+      @pages.collect(&:bytes)
+    end
+
+    # Replaces the pages, given as #bytes returns them or as Strings.
+    def bytes=(pages)
+      @pages = binary_pages(pages)
     end
 
     def document
       pages.size == 1 ? pages.first : pages
+    end
+
+    private
+
+    def binary_pages(pages)
+      pages.collect { |page| page.is_a?(Array) ? page.pack("C*") : page }
     end
   end
 end

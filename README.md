@@ -126,9 +126,10 @@ doc = t.compile(:html_experimental)
 ### Output
 
 #### Return compiled content as an array of bytes
+One array of integers per page. For large output prefer `pages` (below), which returns binary Strings: `bytes` makes a Ruby Integer of every byte.
 ```ruby
 pdf_bytes = Typst("readme.typ").compile(:pdf).bytes
-# => [37, 80, 68, 70, 45, 49, 46, 55, 10, 37, 128 ...]
+# => [[37, 80, 68, 70, 45, 49, 46, 55, 10, 37, 128 ...]]
 ```
 
 #### Write compiled output to a file
@@ -138,6 +139,7 @@ doc.write("filename.pdf")
 ```
 
 #### Return PDF, SVG, PNG or HTML content as an array of pages
+Each page is a binary (ASCII-8BIT) String; PDF and HTML output is a single page.
 ```ruby
 Typst("readme.typ").compile(:pdf).pages
 # => ["%PDF-1.7\n%\x80\x80\x80\x80\n\n1 0 obj\n<<\n  /Type /Pages\n  /Count 3\n  /Kids [160 0 R 162 ...

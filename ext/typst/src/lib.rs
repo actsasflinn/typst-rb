@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use magnus::{function, prelude::*, Error, Ruby};
+use magnus::{function, prelude::*, Error, RArray, Ruby};
 
 use std::collections::HashMap;
 use query::{query as typst_query, QueryCommand, SerializationFormat};
@@ -14,6 +14,13 @@ mod download;
 mod query;
 mod world;
 
+/// Hands the compiled pages to Ruby as binary (ASCII-8BIT) Strings, one per
+/// page. Returned as they are, each `Vec<u8>` would become an Array holding
+/// an Integer per byte.
+fn binary_pages(ruby: &Ruby, pages: Vec<Vec<u8>>) -> RArray {
+    ruby.ary_from_iter(pages.into_iter().map(|page| ruby.str_from_slice(&page)))
+}
+
 fn to_html(
     ruby: &Ruby,
     input: PathBuf,
@@ -24,7 +31,7 @@ fn to_html(
     render_bleed: bool,
     pretty: bool,
     sys_inputs: HashMap<String, String>,
-) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
+) -> Result<(RArray, Vec<String>), Error> {
     let input = input.canonicalize()
         .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
 
@@ -62,11 +69,11 @@ fn to_html(
         .build()
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
-    let compiled = world
+    let (pages, warnings) = world
         .compile(Some("html"), None, &Vec::new(), pretty, render_bleed)
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
-    Ok(compiled)
+    Ok((binary_pages(ruby, pages), warnings))
 }
 
 fn to_svg(
@@ -79,7 +86,7 @@ fn to_svg(
     render_bleed: bool,
     pretty: bool,
     sys_inputs: HashMap<String, String>,
-) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
+) -> Result<(RArray, Vec<String>), Error> {
     let input = input.canonicalize()
         .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
 
@@ -104,11 +111,11 @@ fn to_svg(
         .build()
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
-    let compiled = world
+    let (pages, warnings) = world
         .compile(Some("svg"), None, &Vec::new(), pretty, render_bleed)
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
-    Ok(compiled)
+    Ok((binary_pages(ruby, pages), warnings))
 }
 
 fn to_png(
@@ -121,7 +128,7 @@ fn to_png(
     render_bleed: bool,
     sys_inputs: HashMap<String, String>,
     ppi: Option<f32>,
-) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
+) -> Result<(RArray, Vec<String>), Error> {
     let input = input.canonicalize()
         .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
 
@@ -146,11 +153,11 @@ fn to_png(
         .build()
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
-    let compiled = world
+    let (pages, warnings) = world
         .compile(Some("png"), ppi, &Vec::new(), false, render_bleed)
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
-    Ok(compiled)
+    Ok((binary_pages(ruby, pages), warnings))
 }
 
 fn to_pdf(
@@ -163,7 +170,7 @@ fn to_pdf(
     pretty: bool,
     sys_inputs: HashMap<String, String>,
     pdf_standards: Vec<String>,
-) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
+) -> Result<(RArray, Vec<String>), Error> {
     let input = input.canonicalize()
         .map_err(|err| magnus::Error::new(ruby.exception_arg_error(), err.to_string()))?;
 
@@ -217,11 +224,11 @@ fn to_pdf(
         }
     }
 
-    let compiled = world
+    let (pages, warnings) = world
         .compile(Some("pdf"), None, &pdf_standards_vec, pretty, true)
         .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))?;
 
-    Ok(compiled)
+    Ok((binary_pages(ruby, pages), warnings))
 }
 
 fn query(
