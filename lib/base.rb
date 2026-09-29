@@ -47,7 +47,13 @@ module Typst
     end
 
     def typst_args(opts)
-      options.values_at(*opts).append(options[:sys_inputs].map{ |k,v| [k.to_s,v.to_s] }.to_h)
+      options.values_at(*opts).append(typst_sys_inputs(options[:sys_inputs]))
+    end
+
+    # sys.inputs holds only strings, as the CLI's --input key=value does, so
+    # keys and values are converted.
+    def typst_sys_inputs(sys_inputs)
+      sys_inputs.map{ |k,v| [k.to_s,v.to_s] }.to_h
     end
 
     def typst_pretty_args

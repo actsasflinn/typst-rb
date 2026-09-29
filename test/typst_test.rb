@@ -260,6 +260,18 @@ class TypstTest < Test::Unit::TestCase
     }
   end
 
+  # sys.inputs holds only strings, and compile has always converted the keys
+  # and values it is given; query has to accept the same inputs rather than
+  # raise TypeError on a Symbol key or an Integer value.
+  def test_query_sys_inputs
+    body = %{#metadata(sys.inputs.age) <age>}
+
+    assert_equal("35", Typst(body: body, sys_inputs: { age: 35 }).query("<age>", field: "value", one: true).result)
+    assert_equal("35", Typst(body: body).with_inputs({ age: 35 }).query("<age>", field: "value", one: true).result)
+    assert_equal([], Typst("sys_inputs_example.typ", sys_inputs: { persons: [].to_json }).query("heading").result)
+    assert_equal([], Typst(zip: "main.typ.zip", sys_inputs: { age: 35 }).query("heading").result)
+  end
+
   # Compilation succeeds after clearing the cache. (The fork dropped the RSS
   # shrink assertion here: allocators rarely return freed memory to the OS on
   # demand, so asserting rss strictly decreases is luck, not behavior.)
