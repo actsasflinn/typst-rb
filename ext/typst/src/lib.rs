@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use magnus::{function, prelude::*, Error, Ruby};
+use magnus::{function, prelude::*, Error, RArray, Ruby};
 
 use std::collections::HashMap;
 use query::{query as typst_query, QueryCommand, SerializationFormat};
@@ -15,6 +15,13 @@ mod download;
 mod nogvl;
 mod query;
 mod world;
+
+/// Hands the compiled pages to Ruby as binary (ASCII-8BIT) Strings, one per
+/// page. Returned as they are, each `Vec<u8>` would become an Array holding
+/// an Integer per byte.
+fn binary_pages(ruby: &Ruby, pages: Vec<Vec<u8>>) -> RArray {
+    ruby.ary_from_iter(pages.into_iter().map(|page| ruby.str_from_slice(&page)))
+}
 
 fn to_html(
     input: PathBuf,
@@ -63,11 +70,11 @@ fn to_html(
         .build()
         .map_err(|msg| msg.to_string())?;
 
-    let compiled = world
+    let (pages, warnings) = world
         .compile(Some("html"), None, &Vec::new(), true, pretty, render_bleed)
         .map_err(|msg| msg.to_string())?;
 
-    Ok(compiled)
+    Ok((pages, warnings))
 }
 
 fn route_to_html(
@@ -81,15 +88,20 @@ fn route_to_html(
     render_bleed: bool,
     pretty: bool,
     sys_inputs: HashMap<String, String>,
-) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
-    if concurrent {
+) -> Result<(RArray, Vec<String>), Error> {
+    let result = if concurrent {
         without_gvl(move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
             to_html(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, pretty, sys_inputs)
         })
     } else {
         to_html(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, pretty, sys_inputs)
     }
-    .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg))
+    .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg));
+
+    match result {
+        Ok((pages, warnings)) => Ok((binary_pages(ruby, pages), warnings)),
+        Err(msg) => Err(magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))
+    }
 }
 
 fn to_svg(
@@ -126,11 +138,11 @@ fn to_svg(
         .build()
         .map_err(|msg| msg.to_string())?;
 
-    let compiled = world
+    let (pages, warnings) = world
         .compile(Some("svg"), None, &Vec::new(), true, pretty, render_bleed)
         .map_err(|msg| msg.to_string())?;
 
-    Ok(compiled)
+    Ok((pages, warnings))
 }
 
 fn route_to_svg(
@@ -144,15 +156,20 @@ fn route_to_svg(
     render_bleed: bool,
     pretty: bool,
     sys_inputs: HashMap<String, String>,
-) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
-    if concurrent {
+) -> Result<(RArray, Vec<String>), Error> {
+    let result = if concurrent {
         without_gvl(move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
             to_svg(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, pretty, sys_inputs)
         })
     } else {
         to_svg(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, pretty, sys_inputs)
     }
-    .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg))
+    .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg));
+
+    match result {
+        Ok((pages, warnings)) => Ok((binary_pages(ruby, pages), warnings)),
+        Err(msg) => Err(magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))
+    }
 }
 
 fn to_png(
@@ -189,11 +206,11 @@ fn to_png(
         .build()
         .map_err(|msg| msg.to_string())?;
 
-    let compiled = world
+    let (pages, warnings) = world
         .compile(Some("png"), ppi, &Vec::new(), true, false, render_bleed)
         .map_err(|msg| msg.to_string())?;
 
-    Ok(compiled)
+    Ok((pages, warnings))
 }
 
 fn route_to_png(
@@ -207,15 +224,20 @@ fn route_to_png(
     render_bleed: bool,
     sys_inputs: HashMap<String, String>,
     ppi: Option<f32>,
-) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
-    if concurrent {
+) -> Result<(RArray, Vec<String>), Error> {
+    let result = if concurrent {
         without_gvl(move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
             to_png(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, sys_inputs, ppi)
         })
     } else {
         to_png(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, render_bleed, sys_inputs, ppi)
     }
-    .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg))
+    .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg));
+
+    match result {
+        Ok((pages, warnings)) => Ok((binary_pages(ruby, pages), warnings)),
+        Err(msg) => Err(magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))
+    }
 }
 
 fn to_pdf(
@@ -300,11 +322,11 @@ fn to_pdf(
         }
     }
 
-    let compiled = world
+    let (pages, warnings) = world
         .compile(Some("pdf"), None, &pdf_standards_vec, tagged, pretty, true)
         .map_err(|msg| msg.to_string())?;
 
-    Ok(compiled)
+    Ok((pages, warnings))
 }
 
 fn route_to_pdf(
@@ -319,15 +341,20 @@ fn route_to_pdf(
     sys_inputs: HashMap<String, String>,
     pdf_standards: Vec<String>,
     tagged: bool,
-) -> Result<(Vec<Vec<u8>>, Vec<String>), Error> {
-    if concurrent {
+) -> Result<(RArray, Vec<String>), Error> {
+    let result = if concurrent {
         without_gvl(move || -> Result<(Vec<Vec<u8>>, Vec<String>), String> {
             to_pdf(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, pretty, sys_inputs, pdf_standards, tagged)
         })
     } else {
         to_pdf(input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, pretty, sys_inputs, pdf_standards, tagged)
     }
-    .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg))
+    .map_err(|msg| magnus::Error::new(ruby.exception_arg_error(), msg));
+
+    match result {
+        Ok((pages, warnings)) => Ok((binary_pages(ruby, pages), warnings)),
+        Err(msg) => Err(magnus::Error::new(ruby.exception_arg_error(), msg.to_string()))
+    }
 }
 
 fn query(

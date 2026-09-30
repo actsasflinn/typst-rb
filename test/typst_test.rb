@@ -111,6 +111,46 @@ class TypstTest < Test::Unit::TestCase
     }
   end
 
+  # The extension hands each page over as a binary String rather than an Array
+  # holding an Integer per byte. What #pages, #bytes and #write return is
+  # unchanged.
+  def test_pages_are_binary_strings
+    Dir.mktmpdir do |dir|
+      [:pdf, :svg, :png, :html_experimental].each do |format|
+        document = Typst("test.typ").compile(format)
+        filename = File.join(dir, "test.#{format}")
+        document.write(filename)
+
+        assert(document.pages.all? { |page| page.is_a?(String) && page.encoding == Encoding::BINARY }, "#{format} pages are not binary Strings")
+        assert_equal(document.pages.first, File.binread(filename))
+        assert_equal(document.pages.collect(&:bytes), document.bytes)
+      end
+    end
+  end
+
+  # #pages returns copies, so changing one leaves the document as compiled.
+  def test_pages_are_copies
+    document = Typst(body: %{hello world}).compile(:html_experimental)
+    document.document.force_encoding(Encoding::UTF_8) << "<!-- changed -->"
+
+    assert_equal(Encoding::BINARY, document.document.encoding)
+    assert(!document.document.include?("changed"))
+  end
+
+  # A document built from arrays of Integers, or given them through #bytes=,
+  # works as it did when the extension returned them.
+  def test_pages_from_byte_arrays
+    compiled = Typst("test.typ").compile(:pdf)
+    document = Typst::PdfDocument.new(compiled.bytes)
+
+    assert_equal(compiled.pages, document.pages)
+    assert_equal(Encoding::BINARY, document.pages.first.encoding)
+
+    document.bytes = [[104, 105]]
+    assert_equal(["hi"], document.pages)
+    assert_equal([[104, 105]], document.bytes)
+  end
+
   def test_from_s
     assert {
       Typst::Pdf.from_s(%{hello world}, dependencies: nil, fonts: nil)
