@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    typst (0.15.1.9.pre)
+    typst (0.15.1.9)
       rb_sys (~> 0.9, >= 0.9.130)
       rubyzip (~> 3.2)
 
