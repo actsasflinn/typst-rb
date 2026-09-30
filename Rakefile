@@ -30,12 +30,16 @@ end
 
 Rake::TestTask.new do |t|
   t.libs << "test"
-  t.test_files = FileList['test/*_test.rb']
+  # Absolute, because test/typst_test.rb chdirs into its own directory as it
+  # loads and the loader resolves what follows it against the working directory.
+  t.test_files = FileList['test/*_test.rb'].map { |f| File.expand_path(f) }
   t.verbose = true
 end
 
 task 'benchmark' do |t|
-  sh "bundle exec ruby benchmarks/compile_pdf.rb"
+  Dir.glob("benchmarks/*.rb").each do |b|
+    sh "bundle exec ruby #{b}"
+  end
 end
 
 task 'gem:native' do |t|

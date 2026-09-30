@@ -4,6 +4,7 @@ end
 
 module Typst
   @@formats = {}
+  @@concurrent = false
 
   def self.register_format(**format)
     @@formats.merge!(format)
@@ -11,6 +12,14 @@ module Typst
 
   def self.formats
     @@formats
+  end
+
+  def self.concurrent
+    @@concurrent
+  end
+
+  def self.concurrent=(value)
+    @@concurrent = value
   end
 
   def self.clear_cache(max_age = 0)

@@ -32,24 +32,26 @@ main = %{
 t = Typst(body: main, concurrent: true)
 
 2.times { puts }
-puts "Benchmark #{data.size}: Compile PDF (typst-rb feat/gvl branch)"
+puts 'Benchmark: Compile PNG'
 
 Benchmark.benchmark(Benchmark::Tms::CAPTION, 20) do |b|
-  b.report('Compiling PDFs Processes') do
+  b.report('Compiling PNGs Processes') do
     Parallel.map(data, in_processes: 4) do |person|
-      t.with_inputs({ "persons" => [person].to_json }).compile(:pdf)
+      t.with_inputs({ "persons" => [person].to_json }).compile(:png)
     end
   end
 
-  b.report('Compiling PDFs Threads') do
+  b.report('Compiling PNGs Threads') do
     Parallel.map(data, in_threads: 4) do |person|
-      t.with_inputs({ "persons" => [person].to_json }).compile(:pdf)
+      t.with_inputs({ "persons" => [person].to_json }).compile(:png)
     end
   end
 
-  b.report('Compiling PDFs Single Thread (with GVL)') do
+  b.report('Compiling PNGs Single Thread (with GVL)') do
     data.each do |person|
-      t.with_inputs({ "persons" => [person].to_json }).compile(:pdf)
+      t.with_inputs({ "persons" => [person].to_json }).compile(:png)
     end
   end
 end
+
+2.times { puts }

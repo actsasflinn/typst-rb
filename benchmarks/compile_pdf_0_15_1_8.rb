@@ -6,14 +6,14 @@ gemfile do
   gem 'faker'
   gem 'parallel'
   gem 'rubyzip', "~> 3.2"
+  gem 'typst', "= 0.15.1.8"
 end
 
 require 'benchmark'
 require 'rubygems'
 require 'faker'
 require 'parallel'
-
-require_relative "../lib/typst"
+require 'typst'
 
 data = []
 
@@ -32,7 +32,7 @@ main = %{
 t = Typst(body: main, concurrent: true)
 
 2.times { puts }
-puts "Benchmark #{data.size}: Compile PDF (typst-rb feat/gvl branch)"
+puts "Benchmark #{data.size}: Compile PDF (typst-rb 0.15.1.8 with font optimization)"
 
 Benchmark.benchmark(Benchmark::Tms::CAPTION, 20) do |b|
   b.report('Compiling PDFs Processes') do
