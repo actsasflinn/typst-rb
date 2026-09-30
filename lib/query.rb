@@ -4,7 +4,7 @@ module Typst
 
     def initialize(selector, input, field: nil, one: false, format: "json", root: ".", font_paths: [], ignore_system_fonts: false, ignore_embedded_fonts: false, concurrent: false, sys_inputs: {})
       self.format = format
-      @result = Typst::_query(selector, field, one, format, input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, concurrent, sys_inputs)
+      @result = Typst::_query(selector, field, one, format, input, root, font_paths, ignore_system_fonts, ignore_embedded_fonts, concurrent, typst_sys_inputs(sys_inputs))
     end
 
     def result(raw: false)
