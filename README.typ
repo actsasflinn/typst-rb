@@ -19,7 +19,7 @@ Ruby language binding to #link("https://github.com/typst/typst")[typst], a new m
 
 Add the following to your gemfile and `bundle install`
 ```ruby
-gem 'typst', '>= 0.15.1.5'
+gem 'typst', '>= 0.15.1.9'
 ```
 or install from the command line:
 ```bash
