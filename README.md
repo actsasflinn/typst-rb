@@ -329,7 +329,10 @@ Defect resolutions by [adam12](https://github.com/adam12) and [walterdavis](http
 Design suggestions by [alec-c4](https://github.com/alec-c4)\
 Compiler warnings were contributed by [TheSoloHacker47](https://github.com/TheSoloHacker47) \
 Font optimization patches were contributed by [dmke](https://github.com/dmke) \
-Concurrency patches were contributed by [dmke](https://github.com/dmke)
+Concurrency patches were contributed by [dmke](https://github.com/dmke) \
+Fix for sys_inputs in query by [vitaliiorlov](https://github.com/vitaliiorlov) \
+Ability to optionally disable PDF tags by [vitaliiorlov](https://github.com/vitaliiorlov) \
+Reducing memory of typst compiled output from rust to ruby by [vitaliiorlov](https://github.com/vitaliiorlov)
 
 ## License
 

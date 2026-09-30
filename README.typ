@@ -339,7 +339,10 @@ Defect resolutions by #link("https://github.com/adam12")[adam12] and #link("http
 Design suggestions by #link("https://github.com/alec-c4")[alec-c4]\
 Compiler warnings were contributed by #link("https://github.com/TheSoloHacker47")[TheSoloHacker47] \
 Font optimization patches were contributed by #link("https://github.com/dmke")[dmke] \
-Concurrency patches were contributed by #link("https://github.com/dmke")[dmke]
+Concurrency patches were contributed by #link("https://github.com/dmke")[dmke] \
+Fix for sys_inputs in query by #link("https://github.com/vitaliiorlov")[vitaliiorlov] \
+Ability to optionally disable PDF tags by #link("https://github.com/vitaliiorlov")[vitaliiorlov] \
+Reducing memory of typst compiled output from rust to ruby by #link("https://github.com/vitaliiorlov")[vitaliiorlov]
 
 == License
 
