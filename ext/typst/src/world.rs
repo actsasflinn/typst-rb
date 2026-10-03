@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::ops::Range;
 use once_cell::sync::Lazy;
 
-use magnus::{Error, scan_args::{get_kwargs, scan_args}, Ruby};
+use magnus::{Error, scan_args::{get_kwargs, scan_args}, Ruby, RHash};
 
 use crate::nogvl::without_gvl;
 
@@ -130,7 +130,7 @@ impl VirtualWorld {
     }
     pub fn new_ruby(
         args: &[magnus::Value],
-    ) -> Self {
+    ) -> Result<Self, Error> {
         let args = scan_args::<_, (), (), (), _, ()>(args).unwrap();
         let (text,): (String,) = args.required;
         let kw = get_kwargs::<_, (), (
@@ -142,23 +142,39 @@ impl VirtualWorld {
             Option<PathBuf>,
             Option<PathBuf>,
             Option<HashMap<String, Vec<u8>>>,
-            Option<HashMap<String, String>>,
+            Option<RHash>,
         ), ()>(args.keywords, &[], &["fonts", "font_paths", "system_fonts", "embedded_fonts", "local_fonts", "package_path", "package_cache_path", "files", "sys_inputs"]);
-        let (
-            fonts,
-            font_paths,
-            system_fonts,
-            embedded_fonts,
-            local_fonts,
-            package_path,
-            package_cache_path,
-            files,
-            sys_inputs,
-        ) = kw.unwrap().optional;
 
-        without_gvl(move || -> Self {
-            Self::new(text, fonts, font_paths, system_fonts, embedded_fonts, local_fonts, package_path, package_cache_path, files, sys_inputs)
-        })
+        match kw {
+            Ok(keywords) => {
+                let (
+                    fonts,
+                    font_paths,
+                    system_fonts,
+                    embedded_fonts,
+                    local_fonts,
+                    package_path,
+                    package_cache_path,
+                    files,
+                    sys_inputs,
+                ) = keywords.optional;
+                
+                //let si:HashMap<String, String> = HashMap::default();
+                let si = sys_inputs.unwrap().to_hash_map::<String, String>();
+                // sys_inputs.unwrap().foreach(|key: String, value: String| {
+                //     // Do something with key and value
+                //     // Return ForEach::Continue, ForEach::Stop, or ForEach::Delete
+                    
+                //     Ok(ForEach::Continue)
+                // })?;
+
+                let world = without_gvl(move || -> Self {
+                    Self::new(text, fonts, font_paths, system_fonts, embedded_fonts, local_fonts, package_path, package_cache_path, files, Some(si.unwrap()))
+                });
+                Ok(world)
+            },
+            Err(err) => Err(Error::new(Ruby::get().unwrap().exception_arg_error(), err.to_string()))
+        }
     }
     fn range(&self, span: impl Into<DiagSpan>) -> Option<Range<usize>> {
         match span.into().get() {
@@ -245,8 +261,11 @@ impl VirtualWorld {
         let mut pdf_standards_vec = Vec::<PdfStandard>::new();
         for pdf_standard in pdf_standards.unwrap_or_else(|| Vec::default()).iter() {
             let result = pdf_standards_lookup.get(pdf_standard.as_str());
-            let value = result.unwrap();
-            pdf_standards_vec.push(*value);
+            if let Some(value) = result {
+                pdf_standards_vec.push(*value);
+            } else {
+                return Err("error".to_string());
+            }
         }
         let standards = typst_pdf::PdfStandards::new(&pdf_standards_vec).unwrap();
 

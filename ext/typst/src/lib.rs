@@ -44,6 +44,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
 
     let document = typst.define_class("PdfDocument", ruby.class_object())?;
     document.define_singleton_method("new", function!(PdfDocument::new, 2))?;
+    document.define_method("document", method!(PdfDocument::document, 0))?;
     document.define_method("bytes", method!(PdfDocument::bytes, 0))?;
     document.define_method("warnings", method!(PdfDocument::warnings, 0))?;
     document.define_method("warnings?", method!(PdfDocument::has_warnings, 0))?;

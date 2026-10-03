@@ -146,24 +146,27 @@ module Typst
             :local_fonts,
             :package_path,
             :package_cache_path,
-            :files,
+            :dependencies,
             :sys_inputs)
-          
+
+          from_options[:files] = from_options.delete(:dependencies)
           from_options[:system_fonts] = !opts[:ignore_system_fonts] if from_options[:system_fonts].nil?
           from_options[:embedded_fonts] = !opts[:ignore_embedded_fonts] if from_options[:embedded_fonts].nil?
-          from_options[:fonts] = from_options[:fonts].values
+          from_options[:fonts] = from_options[:fonts].values.collect{ |v| v.bytes }
+
+          # puts from_options.inspect
 
           t = Typst::VirtualWorld.new(options[:body], **from_options)
 
           case format
             when :html,:html_experimental
-              t.to_html(**from_options.slice(:pretty))
+              t.to_html(**options.merge(opts).slice(:pretty))
             when :pdf
-              t.to_pdf(**from_options.slice(:pretty, :render_bleed))
+              t.to_pdf(**options.merge(opts).slice(:pretty, :pdf_standards))
             when :png
-              t.to_png(**from_options.slice(:render_bleed, :ppi))
+              t.to_png(**options.merge(opts).slice(:render_bleed, :ppi))
             when :svg
-              t.to_svg(**from_options.slice(:pretty, :render_bleed))
+              t.to_svg(**options.merge(opts).slice(:pretty, :render_bleed))
             else
               raise "Invalid format"
           end
@@ -189,14 +192,14 @@ module Typst
         Typst::Query.new(selector, self.options[:file], **query_options.merge(self.options.slice(:root, :font_paths, :ignore_system_fonts, :ignore_embedded_fonts, :sys_inputs)))
       elsif self.options.has_key?(:body)
         Typst::build_world_from_s(self.options[:body], **self.options) do |opts|
-          Typst::Query.new(selector, opts[:file], **query_options.merge(opts.slice(:root, :font_paths, :ignore_system_fonts, :ignore_embedded_fonts, :sys_inputs)))
+          Typst::Query.new(selector)
         end
       elsif self.options.has_key?(:zip)
         options.delete(:file)
         self.options.delete(:file)
 
         Typst::build_world_from_zip(self.options[:zip], **self.options) do |opts|
-          Typst::Query.new(selector, opts[:file], **query_options.merge(opts.slice(:root, :font_paths, :ignore_system_fonts, :ignore_embedded_fonts, :sys_inputs)))
+          Typst::Query.new(selector)
         end
       else
         raise "No input given"

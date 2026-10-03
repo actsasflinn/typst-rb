@@ -277,7 +277,7 @@ class TypstTest < Test::Unit::TestCase
   end
 
   def test_typst_package
-    pdf = Typst("invoice.typ", sys_inputs: { "data": {
+    pdf = Typst("invoice.typ", dependencies: { "template_with_font_and_icon/monkey.svg" => File.read("template_with_font_and_icon/monkey.svg") }, sys_inputs: { "data" => {
       "language": "en",
       "banner-image": "template_with_font_and_icon/monkey.svg",
       "invoice-id" => "11111",

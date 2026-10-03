@@ -13,9 +13,31 @@ module Typst
     @@formats
   end
 
+  def self.from(options, &blk)
+    if options.has_key?(:file)
+      res = Typst::build_world_from_project(options[:file], **options) do |opts|
+        yield opts
+      end
+      res
+    elsif options.has_key?(:body)
+      res = Typst::build_world_from_s(options[:body], **options) do |opts|
+        yield opts
+      end
+    elsif options.has_key?(:zip)
+      main_file = options[:main_file]
+      res = Typst::build_world_from_zip(options[:zip], main_file, **options) do |opts|
+        yield opts
+      end
+      res
+    else
+      raise "No input given"
+    end
+  end
+
   def self.build_world_from_project(main_filename, **options, &blk)
     files = Dir.glob(File.join(options[:root], "*"))
     exts = [".typ", ".svg", ".png", ".json"]
+    options[:dependencies] ||= {}
     files.filter{ |fn| exts.any?{ |ext| File.extname(fn) == ext } }.each do |fil|
       options[:dependencies][File.basename(fil)] = File.read(fil) if File.file?(fil)
     end
@@ -32,12 +54,12 @@ module Typst
   def self.build_world_from_s(main_source, **options, &blk)
     options[:body] = main_source
     dependencies = options[:dependencies] || {}
-    options[:dependencies] = dependencies.collect{ |k,v| [k,v.is_a?(String) ? v.bytes : v] }.to_h
+    options[:dependencies] = dependencies.collect{ |k,v| [k, v.is_a?(String) ? v.bytes : v] }.to_h
 
-    fonts = options[:fonts] ||= {}
-    fonts.each do |font|
-      options[:fonts][File.basename(font)] = File.read(font)
-    end
+    #fonts = options[:fonts] ||= {}
+    #fonts.each do |font|
+    #  options[:fonts][File.basename(font)] = File.read(font)
+    #end
 
     blk.call(options)
   end
@@ -90,7 +112,7 @@ rescue LoadError
 end
 
 require_relative "base"
-# require_relative "query"
+require_relative "query"
 # require_relative "document"
 require_relative "formats/pdf"
 require_relative "formats/svg"
