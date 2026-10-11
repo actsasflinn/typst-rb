@@ -11,7 +11,7 @@ a new markup-based typesetting system that is powerful and easy to learn.
 
 Add the following to your gemfile and `bundle install`
 ```ruby
-gem 'typst', '>= 0.15.1.9'
+gem 'typst', '>= 0.15.1.10'
 ```
 or install from the command line:
 ```bash
